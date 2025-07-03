@@ -13,16 +13,16 @@ const TeamLayout = () => {
   
   // Mock user data - será substituído por autenticação real do Supabase
   const userTeam = team?.data?.name || 'Carregando...';
+  const userTeamOwner = team?.data?.owner_name || 'Carregando...';
   const [notifications] = React.useState(3);
 
   const { user, isAdmin: authAdmin, isLoading } = useAuth();
-
-  console.log(user);
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
         userTeam={userTeam} 
+        userTeamOwner={userTeamOwner}
         isAdmin={authAdmin} 
         notifications={notifications} 
       />

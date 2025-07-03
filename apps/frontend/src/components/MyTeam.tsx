@@ -10,6 +10,8 @@ import { Player } from '@/services/playerService';
 import { config } from '@/lib/config';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import ModalAddPlayer from './ModalAddPlayer';
+import TeamPicks from './TeamPicks';
 
 // Suprimir warnings específicos do react-beautiful-dnd
 const originalError = console.error;
@@ -52,6 +54,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   // Estado para edição inline
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{ ovr: number; age: number }>({ ovr: 0, age: 0 });
+
+  // Estado para controlar o modal de adicionar jogador
+  const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
 
   // Função para ordenar jogadores baseado na ordem salva
   const orderPlayersBySavedOrder = useCallback((players: Player[], savedOrder: any) => {
@@ -206,7 +211,6 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const handleReleasePlayer = (playerId: number) => {
     releasePlayerMutation.mutate(playerId);
   };
-  console.log(team?.data?.player_order)
 
   const maxStarterOvr = useMemo(() => {
     if (starters.length === 0) return null;
@@ -377,6 +381,8 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     return () => { document.body.style.overflow = ''; };
   }, [playerToRelease]);
 
+
+
   if (isLoading) {
     return (
       <div className="p-4 pb-20 flex items-center justify-center min-h-[400px]">
@@ -412,7 +418,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
         <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{team?.data?.name}</span>
+              <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -428,8 +434,14 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
               </div>
 
               <div>
-                <p className="text-2xl font-bold">{teamPlayers.length}</p>
-                <p className="text-sm opacity-80">Jogadores</p>
+                <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
+                <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
+                {teamPlayers.length < 13 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
+                )}
+                {teamPlayers.length > 15 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -540,12 +552,15 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
         </div>
 
         {/* Admin Actions */}
-        {isAdmin && (
+        {/* {isAdmin && (
           <Card className="border-2 border-dashed border-nba-orange">
             <CardContent className="p-4 text-center">
               <h3 className="font-semibold mb-2">Ações de Admin</h3>
               <div className="flex space-x-2">
-                <Button className="flex-1 bg-nba-orange hover:bg-nba-orange/90">
+                <Button 
+                  className="flex-1 bg-nba-orange hover:bg-nba-orange/90"
+                  onClick={() => setIsAddPlayerModalOpen(true)}
+                >
                   Adicionar Jogador
                 </Button>
                 <Button variant="outline" className="flex-1">
@@ -554,8 +569,19 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
+
+        {/* Componente de Picks */}
+        <TeamPicks teamId={numericTeamId} />
       </div>
+
+      {/* Modal para adicionar jogador */}
+      <ModalAddPlayer
+        isOpen={isAddPlayerModalOpen}
+        onClose={() => setIsAddPlayerModalOpen(false)}
+        teamId={numericTeamId}
+      />
+
       {playerToRelease && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">

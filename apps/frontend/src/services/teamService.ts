@@ -6,6 +6,7 @@ export interface Team {
   name: string;
   abbreviation: string;
   owner_id: number | null;
+  owner_name?: string | null;
   created_at?: string;
   updated_at?: string;
   player_order?: {

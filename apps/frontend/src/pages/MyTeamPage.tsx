@@ -1,7 +1,6 @@
 import React from 'react';
 import { useOutletContext } from 'react-router-dom';
 import MyTeam from '@/components/MyTeam';
-import Picks from '@/components/Picks';
 
 interface TeamContext {
   teamId: string;
@@ -14,7 +13,7 @@ const MyTeamPage = () => {
   return (
     <>
       <MyTeam isAdmin={isAdmin} teamId={parseInt(teamId)} />
-      <Picks isAdmin={isAdmin} teamId={parseInt(teamId)} />
+      {/* <Picks isAdmin={isAdmin} teamId={parseInt(teamId)} /> */}
     </>
   );
 };

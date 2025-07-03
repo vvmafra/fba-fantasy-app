@@ -4,7 +4,14 @@ import { Team, CreateTeamRequest, UpdateTeamRequest } from '../types';
 export class TeamService {
   // Buscar todos os times
   static async getAllTeams(): Promise<Team[]> {
-    const { rows } = await pool.query('SELECT * FROM teams ORDER BY id');
+    const { rows } = await pool.query(`
+      SELECT 
+        t.*,
+        u.name as owner_name
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      ORDER BY t.id
+    `);
     return rows;
   }
 
@@ -18,8 +25,10 @@ export class TeamService {
         t.abbreviation,
         t.owner_id,
         t.player_order,
+        u.name as owner_name,
         COALESCE(SUM(p.ovr), 0) as cap
       FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
       LEFT JOIN (
         SELECT 
           team_id,
@@ -28,7 +37,7 @@ export class TeamService {
         FROM players 
         WHERE ovr IS NOT NULL
       ) p ON t.id = p.team_id AND p.rn <= 8
-      GROUP BY t.id, t.name, t.abbreviation, t.owner_id, t.player_order
+      GROUP BY t.id, t.name, t.abbreviation, t.owner_id, t.player_order, u.name
       ORDER BY cap DESC
     `);
     
@@ -37,14 +46,28 @@ export class TeamService {
 
   // Buscar time por ID
   static async getTeamById(id: number): Promise<Team | null> {
-    const { rows } = await pool.query('SELECT * FROM teams WHERE id = $1', [id]);
+    const { rows } = await pool.query(`
+      SELECT 
+        t.*,
+        u.name as owner_name
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      WHERE t.id = $1
+    `, [id]);
     return rows[0] || null;
   }
 
   // Buscar times por owner_id (usuário autenticado)
   static async getTeamsByOwnerId(ownerId: number): Promise<Team[]> {
-    const { rows } = await pool.query('SELECT * FROM teams WHERE owner_id = $1 ORDER BY id', [ownerId]);
-    console.log("rows: ", rows);
+    const { rows } = await pool.query(`
+      SELECT 
+        t.*,
+        u.name as owner_name
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      WHERE t.owner_id = $1 
+      ORDER BY t.id
+    `, [ownerId]);
     return rows;
   }
 

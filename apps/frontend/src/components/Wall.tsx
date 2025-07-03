@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal } from 'lucide-react';
+import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube } from 'lucide-react';
 import { teamService, Team } from '@/services/teamService';
+import { useActiveSeason } from '@/hooks/useSeasons';
 import { Link } from 'react-router-dom';
 
 interface ImportantLink {
@@ -28,8 +29,12 @@ interface WallProps {
 }
 
 const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
-  const currentSeason = '2025/26';
-  const seasonsAhead = '1';
+  // Buscar temporada ativa
+  const { data: activeSeason, isLoading: seasonLoading } = useActiveSeason();
+  
+  // Usar dados da temporada ativa ou null se não existir
+  const currentSeason = activeSeason?.data?.year;
+  const seasonsAhead = activeSeason?.data?.season_number?.toString();
   
   // Função para extrair apenas o ano final da temporada
   const getSeasonYear = (season: string) => {
@@ -73,15 +78,31 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
 
   // Função auxiliar para pegar o Date do evento (próxima ocorrência)
   const getEventDate = (event: FBAEvent) => {
-    const match = event.date.match(/([A-Za-zçãé-]+)\s(\d{1,2})h(\d{2})?/i);
-    if (!match) return null;
+    // Regex melhorada para capturar dias da semana com acentos
+    const match = event.date.match(/([A-Za-zÀ-ÿçãé-]+)\s(\d{1,2})h(\d{2})?/i);
+    
+    if (!match) {
+      return null;
+    }
+    
     const [_, diaSemana, hora, minutos] = match;
+    
     const weekDays = [
       'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
     ];
     const now = new Date();
-    const dayIndex = weekDays.findIndex(d => d.toLowerCase().startsWith(diaSemana.toLowerCase().slice(0,3)));
-    if (dayIndex === -1) return null;
+    
+    // Busca mais robusta por dia da semana
+    const dayIndex = weekDays.findIndex(d => {
+      const normalizedDay = d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const normalizedInput = diaSemana.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return normalizedDay.startsWith(normalizedInput.slice(0, 3));
+    });
+    
+    if (dayIndex === -1) {
+      return null;
+    }
+    
     const eventDate = new Date(now);
     eventDate.setHours(parseInt(hora), minutos ? parseInt(minutos) : 0, 0, 0);
 
@@ -129,7 +150,7 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
       id: '1',
       title: 'Início do Relógio do Draft',
       date: 'Domingo 14h',
-      description: `Draft classe de ${getSeasonYear(currentSeason)}`,
+      description: activeSeason?.data?.year ? `Draft classe de ${getSeasonYear(activeSeason.data.year)}` : 'Draft',
       type: 'draft'
     },
     {
@@ -187,14 +208,6 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
         setTeams(teamsData);
       } catch (error) {
         console.error('Erro ao buscar times:', error);
-        // Fallback para dados mockados em caso de erro
-        setTeams([
-          { id: 1, name: 'Lakers', cap: 780, abbreviation: 'LAL', owner_id: null },
-          { id: 2, name: 'Bulls', cap: 765, abbreviation: 'CHI', owner_id: null },
-          { id: 3, name: 'Celtics', cap: 760, abbreviation: 'BOS', owner_id: null },
-          { id: 4, name: 'Heat', cap: 750, abbreviation: 'MIA', owner_id: null },
-          { id: 5, name: 'Warriors', cap: 740, abbreviation: 'GSW', owner_id: null },
-        ]);
       } finally {
         setLoading(false);
       }
@@ -260,12 +273,26 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-primary mb-2">
-              {currentSeason}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {seasonsAhead} / 15 temporadas
-            </p>
+            {seasonLoading ? (
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-400 mb-2">Carregando...</div>
+                <p className="text-sm text-muted-foreground">Buscando temporada ativa</p>
+              </div>
+            ) : currentSeason ? (
+              <>
+                <div className="text-3xl font-bold text-primary mb-2">
+                  {currentSeason}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {seasonsAhead} / 15 temporadas
+                </p>
+              </>
+            ) : (
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-400 mb-2">Sem temporada</div>
+                <p className="text-sm text-muted-foreground">Nenhuma temporada ativa</p>
+              </div>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -305,7 +332,12 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                   className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${idx < 3 ? 'font-bold border-2 border-yellow-400' : 'hover:bg-muted/50'} transition`}
                 >
                   <span className={`text-lg w-6 text-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-500' : idx === 2 ? 'text-orange-700' : 'text-muted-foreground'}`}>{idx + 1}</span>
-                  <span className="flex-1 truncate">{team.name}</span>
+                  <div className="flex-1 min-w-0">
+                    <span className="block truncate">{team.name}</span>
+                    <span className="block text-xs text-muted-foreground truncate">
+                      Dono: {team.owner_name || 'Sem dono'}
+                    </span>
+                  </div>
                   <span className="text-sm font-mono">CAP: {team.cap || 0}</span>
                 </Link>
               ))}
@@ -331,7 +363,28 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
               .map(({ event }) => (
                 <div
                   key={event.id}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                  onClick={() => {
+                    // Eventos que redirecionam para YouTube
+                    const youtubeEvents = ['regular_season', 'playoffs'];
+                    
+                    if (youtubeEvents.includes(event.type)) {
+                      // Aqui você pode adicionar os links específicos do YouTube
+                      const youtubeLinks = {
+                        'regular_season': 'https://www.youtube.com/@fba2kleaguebrasil/live',
+                        'playoffs': 'https://www.youtube.com/@fba2kleaguebrasil/live'
+                      };
+                      
+                      const link = youtubeLinks[event.type as keyof typeof youtubeLinks];
+                      if (link) {
+                        window.open(link, '_blank');
+                        console.log(`Redirecionando para YouTube: ${event.title}`);
+                      }
+                    } else {
+                      // Eventos que abrem modal
+                      console.log(`Abrir modal para: ${event.title}`);
+                    }
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -341,7 +394,13 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                       {getEventIcon(event.type)}
                     </div>
                     <div>
-                      <h3 className="font-semibold">{event.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{event.title}</h3>
+                        {/* Ícone do YouTube para eventos que redirecionam */}
+                        {['regular_season', 'playoffs'].includes(event.type) && (
+                          <Youtube className="h-4 w-4 text-red-600" />
+                        )}
+                      </div>
                       {event.description && (
                         <p className="text-sm text-muted-foreground">
                           {event.description}
@@ -353,7 +412,7 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                     <div className="font-semibold">
                       {event.date}
                     </div>
-                    <Badge variant="secondary">
+                    <Badge variant="secondary" className="mt-1">
                       {event.type.replace('_', ' ')}
                     </Badge>
                   </div>

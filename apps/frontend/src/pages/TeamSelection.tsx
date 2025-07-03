@@ -18,14 +18,9 @@ function setUserTeamId(teamId: string | number) {
 const TeamSelection = () => {
   // Mock data - será substituído por dados reais do usuário
   const { data: userTeams, isLoading, error } = useMyTeams();
-  console.log("userTeams: ", userTeams);
 
   useEffect(() => {
-    teamService.getMyTeams().then(res => {
-      console.log("Direto do service:", res);
-    }).catch(err => {
-      console.error("Erro direto do service:", err);
-    });
+    teamService.getMyTeams()
   }, []);
 
   // Verificar se está carregando

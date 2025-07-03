@@ -8,6 +8,7 @@ import { useTeam } from '@/hooks/useTeams';
 import { Player } from '@/services/playerService';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import TeamPicks from './TeamPicks';
 
 // Suprimir warnings específicos do react-beautiful-dnd
 const originalError = console.error;
@@ -153,9 +154,14 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
             </div>
             {/* Conteúdo do jogador */}
             <div className="flex items-center"></div>
-            <div className="flex-1 ml-3">
+            <div className="flex-1 ml-3 min-w-0">
               <div className="flex items-center space-x-2">
-                <h3 className="font-semibold text-md player-name-responsive">{player.name}</h3>
+                <h3
+                  className="font-semibold text-md truncate"
+                  title={player.name}
+                >
+                  {player.name}
+                </h3>
               </div>
               <div className="flex items-center space-x-4 text-sm text-gray-600">
                 {isEditing ? (
@@ -300,13 +306,13 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   }
 
   return (
-<div>
+    <div>
       <div className="p-4 pb-20 space-y-6">
         {/* Team Summary */}
         <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{team?.data?.name}</span>
+              <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
             </CardTitle>
             
           </CardHeader>
@@ -323,8 +329,14 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
               </div>
 
               <div>
-                <p className="text-2xl font-bold">{teamPlayers.length}</p>
-                <p className="text-sm opacity-80">Jogadores</p>
+                <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
+                <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
+                {teamPlayers.length < 13 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
+                )}
+                {teamPlayers.length > 15 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -427,7 +439,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
         </div>
 
         {/* Admin Actions */}
-        {isAdmin && (
+        {/* {isAdmin && (
           <Card className="border-2 border-dashed border-nba-orange">
             <CardContent className="p-4 text-center">
               <h3 className="font-semibold mb-2">Ações de Admin</h3>
@@ -444,9 +456,11 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
               </div>
             </CardContent>
           </Card>
-        )}
+        )} */}
+        {/* Componente de Picks */}
+        <TeamPicks teamId={numericTeamId} />
       </div>
-</div>
+    </div>
   );
 };
 

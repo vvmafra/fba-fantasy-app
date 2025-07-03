@@ -132,7 +132,16 @@ export class PlayerService {
     try {
       this.checkPostgresClient();
       
-      const { rows } = await pool.query('INSERT INTO players (name, position, age, ovr, ins, mid, "3pt", ins_d, per_d, plmk, reb, phys, iq, pot, team_id, source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *', [
+      // Buscar o season_id ativo
+      const { rows: seasonRows } = await pool.query('SELECT id FROM seasons WHERE is_active = true LIMIT 1');
+      
+      if (seasonRows.length === 0) {
+        throw createError('Nenhuma temporada ativa encontrada', 400);
+      }
+      
+      const activeSeasonId = seasonRows[0].id;
+      
+      const { rows } = await pool.query('INSERT INTO players (name, position, age, ovr, ins, mid, "3pt", ins_d, per_d, plmk, reb, phys, iq, pot, team_id, source, season_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *', [
         playerData.name,
         playerData.position,
         playerData.age,
@@ -148,7 +157,8 @@ export class PlayerService {
         playerData.iq || null,
         playerData.pot || null,
         playerData.team_id || null,
-        playerData.source || 'manual'
+        playerData.source || 'manual',
+        activeSeasonId
       ]);
 
       return rows[0];
@@ -370,14 +380,10 @@ export class PlayerService {
   // Buscar players por time
   static async getPlayersByTeam(teamId: number): Promise<Player[]> {
     try {
-      console.log('🔍 Buscando players para o time:', teamId);
       this.checkPostgresClient();
       
-      console.log('📡 Fazendo consulta no PostgreSQL...');
       const { rows } = await pool.query('SELECT * FROM players WHERE team_id = $1', [teamId]);
 
-      console.log('📊 Resultado da consulta:', { data: rows.length });
-      console.log('✅ Players encontrados:', rows.length);
       return rows;
     } catch (error) {
       console.error('💥 Erro em getPlayersByTeam:', error);
@@ -403,7 +409,6 @@ export class PlayerService {
     try {
       // TODO: Implementar integração real com OpenAI Vision API
       // Por enquanto, retorna dados simulados
-      console.log('Processando OCR para:', ocrData.imageUrl);
       
       // Simulação de resposta do OCR
       const mockPlayers: CreatePlayerRequest[] = [

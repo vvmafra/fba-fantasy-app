@@ -32,14 +32,11 @@ export const useTeam = (id: number) => {
 
 // Hook para buscar times do usuário autenticado
 export const useMyTeams = () => {
-  console.log("useMyTeams HOOK FOI CHAMADO");
   return useQuery({
     queryKey: ['my-teams'],
     queryFn: async () => {
-      console.log("queryFn DISPARADO");
       try {
         const result = await teamService.getMyTeams();
-        console.log("Resultado da query:", result);
         return result;
       } catch (error) {
         console.error("Erro na query useMyTeams:", error);

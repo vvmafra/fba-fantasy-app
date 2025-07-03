@@ -8,8 +8,6 @@ export class PlayerController {
   // GET /api/v1/players/test - Teste de conexão
   static testConnection = asyncHandler(async (req: Request, res: Response) => {
     try {
-      console.log('🔍 Testando conexão com PostgreSQL...');
-      console.log('📡 DATABASE_URL:', process.env['DATABASE_URL'] ? 'Presente' : 'Ausente');
       
       if (!pool) {
         return res.status(500).json({
@@ -22,8 +20,6 @@ export class PlayerController {
       }
       
       const { rows } = await pool.query('SELECT COUNT(*) FROM players');
-      
-      console.log('📊 Resultado do teste:', { count: rows[0].count });
       
       return res.status(200).json({
         success: true,
@@ -79,7 +75,7 @@ export class PlayerController {
   // GET /api/v1/players/team/:team_id - Listar players por time
   static getPlayersByTeam = asyncHandler(async (req: Request, res: Response) => {
     const { team_id } = req.params;
-    console.log("team_id: ", team_id);
+
     if (!team_id) {
       return res.status(400).json({ success: false, message: 'ID do time é obrigatório' });
     }
@@ -113,6 +109,7 @@ export class PlayerController {
 
   // POST /api/v1/players - Criar novo player manualmente
   static createPlayer = asyncHandler(async (req: Request, res: Response) => {
+
     const adminUser = (req as any).user; // Admin que fez a requisição
     const player = await PlayerService.createPlayer(req.body);
     

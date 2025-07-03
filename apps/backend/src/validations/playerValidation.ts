@@ -3,10 +3,8 @@ import { z } from 'zod';
 // Schema para criação de player
 export const createPlayerSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
-  position: z.enum(['PG', 'SG', 'SF', 'PF', 'C'], {
-    errorMap: () => ({ message: 'Posição deve ser PG, SG, SF, PF ou C' })
-  }),
-  age: z.number().int().min(18, 'Idade mínima é 18').max(50, 'Idade máxima é 50'),
+  position: z.string().min(1, 'Posição é obrigatória'),
+  age: z.number().int().min(17, 'Idade mínima é 17').max(50, 'Idade máxima é 50'),
   ovr: z.number().int().min(0).max(99),
   
   // Campos de estatísticas específicos
@@ -23,6 +21,7 @@ export const createPlayerSchema = z.object({
   
   team_id: z.number().int().nullable().optional(),
   source: z.enum(['ocr', 'manual']).optional(),
+  season_id: z.number().int().nullable().optional(),
 });
 
 // Schema para atualização de player

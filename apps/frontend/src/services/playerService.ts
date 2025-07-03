@@ -95,8 +95,8 @@ export const playerService = {
   //   apiRequest.get<Player[]>(`/players/position/${position}`),
 
   // Criar novo player
-  // createPlayer: (data: CreatePlayerData) =>
-  //   apiRequest.post<Player>('/players', data),
+  createPlayer: (data: CreatePlayerData) =>
+    apiRequest.post<Player>('/players', data),
 
   // Criar player via OCR
   createPlayerOCR: (data: OCRRequestData) =>

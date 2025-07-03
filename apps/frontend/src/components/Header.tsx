@@ -1,19 +1,20 @@
 
 import React from 'react';
-import { Bell, Settings, Crown } from 'lucide-react';
+import { Bell, Settings, Crown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   userTeam: string;
+  userTeamOwner: string;
   isAdmin: boolean;
   notifications: number;
 }
 
-const Header = ({ userTeam, isAdmin, notifications }: HeaderProps) => {
+const Header = ({ userTeam, userTeamOwner, isAdmin, notifications }: HeaderProps) => {
+  const navigate = useNavigate();
 
-  console.log(isAdmin);
-  
   return (
     <header className="fixed top-0 left-0 right-0 bg-nba-dark text-white z-40 px-4 py-3">
       <div className="flex items-center justify-between">
@@ -24,7 +25,13 @@ const Header = ({ userTeam, isAdmin, notifications }: HeaderProps) => {
           <div>
             <h1 className="font-bold text-lg">FBA League 2K25</h1>
             <div className="flex items-center space-x-2">
-              <p className="text-sm text-gray-300">{userTeam}</p>
+              <button 
+                onClick={() => navigate('/teams')}
+                className="text-sm text-gray-300 hover:text-white transition-colors cursor-pointer"
+                title="Clique para trocar de time"
+              >
+                {userTeam}
+              </button>
               {isAdmin && (
                 <Badge variant="secondary" className="bg-nba-orange text-white">
                   <Crown size={12} className="mr-1" />
@@ -36,6 +43,16 @@ const Header = ({ userTeam, isAdmin, notifications }: HeaderProps) => {
         </div>
         
         <div className="flex items-center space-x-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/teams')}
+            className="flex items-center gap-1"
+            title="Trocar de time"
+          >
+            <Users size={16} />
+            <span className="hidden sm:inline">Trocar Time</span>
+          </Button>
           <Button variant="ghost" size="sm" className="relative">
             <Bell size={20} />
             {notifications > 0 && (

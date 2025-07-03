@@ -45,6 +45,7 @@ export interface Player {
   team_id?: number | null;
   source?: 'ocr' | 'manual';
   created_at: string;
+  season_id?: number | 1;
 }
 
 export interface CreatePlayerRequest {
@@ -67,6 +68,7 @@ export interface CreatePlayerRequest {
   
   team_id?: number | null;
   source?: 'ocr' | 'manual';
+  season_id?: number | 1;
 }
 
 export interface UpdatePlayerRequest extends Partial<CreatePlayerRequest> {
@@ -79,6 +81,7 @@ export interface PlayerFilters {
   team?: number; // ID do time
   position?: string;
   isFreeAgent?: boolean;
+  season_id?: number;
 }
 
 export interface PlayerQueryParams extends PaginationParams, PlayerFilters {}
@@ -125,6 +128,7 @@ export interface Team {
   name: string;
   abbreviation: string;
   owner_id: number | null;
+  owner_name?: string | null;
   logo_path?: string | null;
   logo_updated_at?: string | null;
   player_order?: {

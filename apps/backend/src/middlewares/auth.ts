@@ -3,14 +3,10 @@ import jwt from 'jsonwebtoken';
 import pool from '../utils/postgresClient';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-  console.log("=== MIDDLEWARE AUTHENTICATE TOKEN ===");
   const authHeader = (req.headers as any).authorization;
-  console.log("authHeader: ", authHeader);
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-  console.log("token extraído: ", token ? "TOKEN PRESENTE" : "TOKEN AUSENTE");
 
   if (!token) {
-    console.log("Token não fornecido");
     res.status(401).json({ 
       success: false, 
       message: 'Token de acesso é obrigatório' 
@@ -20,17 +16,14 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
   try {
     const decoded = jwt.verify(token, process.env['JWT_SECRET']!) as any;
-    console.log("Token decodificado: ", decoded);
     (req as any).user = {
       id: decoded.userId.toString(),
       email: decoded.email,
       role: decoded.role || 'user' // Extrai a role do token
     };
 
-    console.log('Usuário autenticado com sucesso:', (req as any).user);
     next();
   } catch (error) {
-    console.log("Erro ao verificar token: ", error);
     res.status(403).json({ 
       success: false, 
       message: 'Token inválido ou expirado' 
@@ -110,7 +103,6 @@ export const requireTeamOwnership = async (req: Request, res: Response, next: Ne
       });
     }
 
-    console.log(`Usuário ${userId} autorizado para acessar time ${teamId}`);
     next();
   } catch (error) {
     console.error('Erro no middleware requireTeamOwnership:', error);
@@ -190,7 +182,6 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
       });
     }
 
-    console.log(`Usuário ${userId} autorizado para modificar player ${playerId} do time ${playerTeamId}`);
     next();
   } catch (error) {
     console.error('Erro no middleware requirePlayerTeamOwnership:', error);
@@ -234,7 +225,6 @@ export const requireAnyTeamOwnership = async (req: Request, res: Response, next:
       });
     }
 
-    console.log(`Usuário ${userId} tem ${teamCount} time(s) e está autorizado`);
     next();
   } catch (error) {
     console.error('Erro no middleware requireAnyTeamOwnership:', error);
@@ -292,7 +282,6 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
 
     // Se é admin, pode editar qualquer campo
     if (isAdmin) {
-      console.log(`Admin ${userId} autorizado para editar time ${teamId}`);
       return next();
     }
 
@@ -316,7 +305,6 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
       });
     }
 
-    console.log(`Dono ${userId} autorizado para editar player_order do time ${teamId}`);
     next();
   } catch (error) {
     console.error('Erro no middleware requireTeamEditPermission:', error);

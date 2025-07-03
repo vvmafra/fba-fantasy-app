@@ -48,20 +48,15 @@ const GoogleLoginButton = () => {
         if (data.error) {
           alert("Erro na autenticação: " + data.error);
         } else {
-          console.log("Login bem-sucedido:", data);
-          
+
           // Salvar token no localStorage
           localStorage.setItem('authToken', data.data.token);
           localStorage.setItem('user', JSON.stringify(data.data.user));
-          
-          console.log("Token salvo:", data.data.token);
-          console.log("Usuário salvo:", data.data.user);
-          
+              
           // Sua lógica de redirecionamento com base no time
           if (!data.data.user.teamId) {
             alert("Seu e-mail não está vinculado a um time. Solicite permissão.");
           } else {
-            console.log("Redirecionando para /teams");
             window.location.href = `/teams`;
           }
         }
