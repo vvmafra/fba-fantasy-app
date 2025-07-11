@@ -28,6 +28,10 @@ export const seasonService = {
   getSeasonById: (id: number) =>
     apiRequest.get<Season>(`/seasons/${id}`),
 
+  // Buscar todas as temporadas a partir da ativa
+  getSeasonsFromActive: () =>
+    apiRequest.get<Season[]>('/seasons/active/seasons'),
+
   // Buscar temporada ativa
   getActiveSeason: () =>
     apiRequest.get<Season>('/seasons/active'),

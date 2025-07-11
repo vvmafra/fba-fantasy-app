@@ -6,12 +6,16 @@ import { Users } from 'lucide-react';
 import { useMyTeams } from '@/hooks/useTeams';
 import { teamService } from '@/services/teamService';
 
-function setUserTeamId(teamId: string | number) {
+function setUserTeamId(teamId: string | number, teamData: any) {
   const userStr = localStorage.getItem('user');
   if (userStr) {
     const user = JSON.parse(userStr);
     user.teamId = teamId;
+    user.teamData = teamData; // Armazenar dados do time selecionado
     localStorage.setItem('user', JSON.stringify(user));
+    
+    // Disparar evento customizado para notificar mudanças
+    window.dispatchEvent(new CustomEvent('userTeamChanged', { detail: { user } }));
   }
 }
 
@@ -63,13 +67,13 @@ const TeamSelection = () => {
             <Card key={team.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-nba-blue" />
+                  <img src={`/images/${team.logo_path}`} alt="logo" className="w-12 h-12"/>
                   {team.name}
                 </CardTitle>
-                <CardDescription>{team.abbreviation}</CardDescription>
+                {/* <CardDescription>{team.abbreviation}</CardDescription> */}
               </CardHeader>
               <CardContent>
-                <Link to={`/team/${team.id}/wall`} onClick={() => setUserTeamId(team.id)}>
+                <Link to={`/team/${team.id}/wall`} onClick={() => setUserTeamId(team.id, team)}>
                   <Button className="w-full">
                     Gerenciar Time
                   </Button>

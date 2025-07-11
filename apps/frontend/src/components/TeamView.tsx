@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Loader2, Pencil, Check, X } from 'lucide-react';
+import { Crown, Loader2, Pencil, Check, X, Copy } from 'lucide-react';
 import { usePlayersByTeam, useUpdatePlayer } from '@/hooks/usePlayers';
 import { useTeam } from '@/hooks/useTeams';
 import { Player } from '@/services/playerService';
@@ -128,6 +128,17 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     if (starters.length === 0) return null;
     return Math.max(...starters.map(p => p.ovr));
   }, [starters]);
+
+  const handleCopyTeam = () => {
+    if (!team?.data) return;
+    const startersList = starters.map((p, idx) => `${STARTER_POSITIONS[idx]}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const capLine = `CAP: ${minCap} / *${currentCap}* / ${maxCap}`;
+    const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n\n${capLine}`;
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
+  };
 
   // PlayerCard com funcionalidade de edição para admins
   const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number }) => {
@@ -388,6 +399,9 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
           <h2 className="text-xl font-bold mb-4 flex items-center">
             <Crown className="mr-2 text-nba-orange" />
             Quinteto Titular
+            <button onClick={handleCopyTeam} className="ml-2 p-1 rounded hover:bg-gray-200" title="Copiar informações do time">
+              <Copy size={18} />
+            </button>
             {!isAdmin && (
               <Badge variant="outline" className="ml-2 text-xs">
                 Modo Visualização

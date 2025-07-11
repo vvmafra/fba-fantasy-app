@@ -15,6 +15,8 @@ export interface Team {
     last_updated?: string;
   } | null;
   cap?: number; // CAP (soma dos 8 maiores overalls)
+  logo_path?: string | null;
+  conference?: string | null;
 }
 
 export interface CreateTeamData {

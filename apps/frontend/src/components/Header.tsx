@@ -10,24 +10,22 @@ interface HeaderProps {
   userTeamOwner: string;
   isAdmin: boolean;
   notifications: number;
+  userTeamLogo: string;
 }
 
-const Header = ({ userTeam, userTeamOwner, isAdmin, notifications }: HeaderProps) => {
+const Header = ({ userTeam, userTeamOwner, isAdmin, notifications, userTeamLogo }: HeaderProps) => {
   const navigate = useNavigate();
-
   return (
     <header className="fixed top-0 left-0 right-0 bg-nba-dark text-white z-40 px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-nba-orange rounded-full flex items-center justify-center">
-            <span className="font-bold text-sm">NBA</span>
-          </div>
+            <img src={`/images/${userTeamLogo}`} alt="logo" className="w-12 h-12"/>
           <div>
             <h1 className="font-bold text-lg">FBA League 2K25</h1>
             <div className="flex items-center space-x-2">
               <button 
                 onClick={() => navigate('/teams')}
-                className="text-sm text-gray-300 hover:text-white transition-colors cursor-pointer"
+                className="w-auto whitespace-nowrap text-sm text-gray-300 hover:text-white transition-colors cursor-pointer"
                 title="Clique para trocar de time"
               >
                 {userTeam}
@@ -53,7 +51,7 @@ const Header = ({ userTeam, userTeamOwner, isAdmin, notifications }: HeaderProps
             <Users size={16} />
             <span className="hidden sm:inline">Trocar Time</span>
           </Button>
-          <Button variant="ghost" size="sm" className="relative">
+          {/* <Button variant="ghost" size="sm" className="relative">
             <Bell size={20} />
             {notifications > 0 && (
               <Badge 
@@ -63,7 +61,7 @@ const Header = ({ userTeam, userTeamOwner, isAdmin, notifications }: HeaderProps
                 {notifications}
               </Badge>
             )}
-          </Button>
+          </Button> */}
           <Button variant="ghost" size="sm">
             <Settings size={20} />
           </Button>

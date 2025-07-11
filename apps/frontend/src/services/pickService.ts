@@ -19,4 +19,8 @@ export interface TeamFuturePicks {
 
 export const getTeamFuturePicks = (teamId: number) => {
   return apiRequest.get<TeamFuturePicks>(`/picks/team/${teamId}/future`);
+};
+
+export const getAllPicks = () => {
+  return apiRequest.get<Pick[]>('/picks');
 }; 

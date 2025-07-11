@@ -17,21 +17,23 @@ declare global {
 
 const GoogleLoginButton = () => {
   useEffect(() => {
-    // Certifique-se que o script foi carregado antes de usar google.accounts.id
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: AUTH_CONFIG.GOOGLE_CLIENT_ID,
-        callback: handleCredentialResponse,
-      });
-
-      window.google.accounts.id.renderButton(
-        document.getElementById("google-login-button"),
-        {
-          theme: "outline",
-          size: "large",
-        }
-      );
+    let tries = 0;
+    function tryInit() {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        window.google.accounts.id.initialize({
+          client_id: AUTH_CONFIG.GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-login-button"),
+          { theme: "outline", size: "large" }
+        );
+      } else if (tries < 50) {
+        tries++;
+        setTimeout(tryInit, 100);
+      }
     }
+    tryInit();
   }, []);
 
   const handleCredentialResponse = (response: GoogleCredentialResponse) => {
@@ -55,7 +57,7 @@ const GoogleLoginButton = () => {
               
           // Sua lógica de redirecionamento com base no time
           if (!data.data.user.teamId) {
-            alert("Seu e-mail não está vinculado a um time. Solicite permissão.");
+            alert("Seu e-mail não está vinculado a um time. Solicite permissão à administração.");
           } else {
             window.location.href = `/teams`;
           }

@@ -6,7 +6,9 @@ export class TeamService {
   static async getAllTeams(): Promise<Team[]> {
     const { rows } = await pool.query(`
       SELECT 
-        t.*,
+        t.*, 
+        t.logo_path, 
+        t.conference, 
         u.name as owner_name
       FROM teams t
       LEFT JOIN users u ON t.owner_id = u.id
@@ -25,6 +27,8 @@ export class TeamService {
         t.abbreviation,
         t.owner_id,
         t.player_order,
+        t.logo_path,
+        t.conference,
         u.name as owner_name,
         COALESCE(SUM(p.ovr), 0) as cap
       FROM teams t
@@ -37,7 +41,7 @@ export class TeamService {
         FROM players 
         WHERE ovr IS NOT NULL
       ) p ON t.id = p.team_id AND p.rn <= 8
-      GROUP BY t.id, t.name, t.abbreviation, t.owner_id, t.player_order, u.name
+      GROUP BY t.id, t.name, t.abbreviation, t.owner_id, t.player_order, t.logo_path, t.conference, u.name
       ORDER BY cap DESC
     `);
     
@@ -48,7 +52,9 @@ export class TeamService {
   static async getTeamById(id: number): Promise<Team | null> {
     const { rows } = await pool.query(`
       SELECT 
-        t.*,
+        t.*, 
+        t.logo_path, 
+        t.conference, 
         u.name as owner_name
       FROM teams t
       LEFT JOIN users u ON t.owner_id = u.id
@@ -61,7 +67,9 @@ export class TeamService {
   static async getTeamsByOwnerId(ownerId: number): Promise<Team[]> {
     const { rows } = await pool.query(`
       SELECT 
-        t.*,
+        t.*, 
+        t.logo_path, 
+        t.conference, 
         u.name as owner_name
       FROM teams t
       LEFT JOIN users u ON t.owner_id = u.id

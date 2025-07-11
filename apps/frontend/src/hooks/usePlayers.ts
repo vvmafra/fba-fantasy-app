@@ -15,10 +15,14 @@ export const playerKeys = {
 };
 
 // Hook para buscar todos os players
-export const usePlayers = (params?: PlayerQueryParams) => {
+export const usePlayers = (params?: PlayerQueryParams & { getAll?: boolean }) => {
+  const queryParams = params?.getAll 
+    ? { ...params, limit: 1000, page: 1 } // Força buscar todos
+    : params;
+    
   return useQuery({
-    queryKey: playerKeys.list(params || {}),
-    queryFn: () => playerService.getAllPlayers(params),
+    queryKey: playerKeys.list(queryParams || {}),
+    queryFn: () => playerService.getAllPlayers(queryParams),
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 };
@@ -231,3 +235,13 @@ export const useDeletePlayer = () => {
 //     },
 //   });
 // };
+
+// Hook para buscar todos os players de um time (sem paginação)
+export const useAllPlayersByTeam = (teamId: number) => {
+  return useQuery({
+    queryKey: [...playerKeys.byTeam(teamId), 'all'],
+    queryFn: () => playerService.getAllPlayersByTeam(teamId),
+    enabled: !!teamId,
+    staleTime: 3 * 60 * 1000, // 3 minutos
+  });
+};

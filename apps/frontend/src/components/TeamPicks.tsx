@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTeamFuturePicks } from '@/hooks/usePicks';
 import { useTeam } from '@/hooks/useTeams';
 
@@ -44,6 +44,10 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
       return a.round - b.round;
     });
   }, [futurePicks]);
+
+  // Estados para minimizar/maximizar
+  const [showOwnedPicks, setShowOwnedPicks] = useState(true);
+  const [showTradedPicks, setShowTradedPicks] = useState(true);
 
   const PickCard = ({ pick, isOwned }: { pick: any; isOwned: boolean }) => {
     // Determinar o tipo da pick baseado na propriedade
@@ -126,27 +130,41 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
     <div className="space-y-6">
       {/* Picks em Nossa Posse */}
       <div>
-        <h2 className="text-xl font-bold mb-4 text-nba-dark">
-          Picks do {teamName}
-        </h2>
-        {picksEmPosse.length === 0 ? (
-          <div className="text-center text-gray-400">Nenhuma pick futura em posse.</div>
-        ) : (
-          picksEmPosse.map(pick => (
-            <PickCard key={pick.id} pick={pick} isOwned={true} />
-          ))
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold">
+            Picks do {teamName}
+          </h2>
+          <button type="button" onClick={() => setShowOwnedPicks(v => !v)} className="ml-2">
+            {showOwnedPicks ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+        </div>
+        {showOwnedPicks && (
+          picksEmPosse.length === 0 ? (
+            <div className="text-center text-gray-400">Nenhuma pick futura em posse.</div>
+          ) : (
+            picksEmPosse.map(pick => (
+              <PickCard key={pick.id} pick={pick} isOwned={true} />
+            ))
+          )
         )}
       </div>
 
       {/* Picks Trocadas */}
       {picksTrocadas.length > 0 && (
         <div>
-          <h2 className="text-xl font-bold mb-4 text-nba-dark">
-            Picks Trocadas
-          </h2>
-          {picksTrocadas.map(pick => (
-            <PickCard key={pick.id} pick={pick} isOwned={false} />
-          ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold">
+              Picks Trocadas
+            </h2>
+            <button type="button" onClick={() => setShowTradedPicks(v => !v)} className="ml-2">
+              {showTradedPicks ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </button>
+          </div>
+          {showTradedPicks && (
+            picksTrocadas.map(pick => (
+              <PickCard key={pick.id} pick={pick} isOwned={false} />
+            ))
+          )}
         </div>
       )}
     </div>

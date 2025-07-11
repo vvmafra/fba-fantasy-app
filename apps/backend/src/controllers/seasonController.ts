@@ -10,6 +10,12 @@ export class SeasonController {
     return res.status(200).json({ success: true, data: seasons });
   });
 
+  // GET /api/v1/seasons/active - Listar todas as seasons a partir da ativa
+  static getSeasonsFromActive = asyncHandler(async (req: Request, res: Response) => {
+    const seasons = await SeasonService.getSeasonsFromActive();
+    return res.status(200).json({ success: true, data: seasons });
+  });
+
   // GET /api/v1/seasons/:id - Buscar season por ID
   static getSeasonById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;

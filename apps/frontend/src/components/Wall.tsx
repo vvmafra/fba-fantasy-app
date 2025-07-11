@@ -2,10 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube } from 'lucide-react';
+import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube, Check, AlertTriangle } from 'lucide-react';
 import { teamService, Team } from '@/services/teamService';
 import { useActiveSeason } from '@/hooks/useSeasons';
+import { useDeadlines } from '@/hooks/useDeadlines';
+import { deadlineService, Deadline } from '@/services/deadlineService';
 import { Link } from 'react-router-dom';
+import { RosterSeasonForm } from './forms/rosterSeason';
+import { RosterPlayoffsForm } from './forms/rosterPlayoffs';
+import { rosterService } from '@/services/rosterService';
+import { rosterPlayoffsService } from '@/services/rosterPlayoffsService';
 
 interface ImportantLink {
   id: string;
@@ -15,33 +21,26 @@ interface ImportantLink {
   category: 'news' | 'rules' | 'schedule' | 'other';
 }
 
-interface FBAEvent {
-  id: string;
-  title: string;
-  date: string; // Formato: "Domingo 14h" ou "Segunda-feira 20h"
-  description?: string;
-  type: 'draft' | 'trade_deadline' | 'playoffs' | 'regular_season' | 'playoffs_roster' | 'regular_roster' | 'fa_deadline' | 'other';
-}
-
 interface WallProps {
   isAdmin: boolean;
   teamId: number;
 }
 
-const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
+const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
   // Buscar temporada ativa
   const { data: activeSeason, isLoading: seasonLoading } = useActiveSeason();
+  
+  // Buscar deadlines da temporada ativa
+  const { deadlines, loading: deadlinesLoading, refreshDeadlines } = useDeadlines(activeSeason?.data?.id);
+  
+  // Estado para controlar os modais de roster
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
+  const [isPlayoffsModalOpen, setIsPlayoffsModalOpen] = useState(false);
   
   // Usar dados da temporada ativa ou null se não existir
   const currentSeason = activeSeason?.data?.year;
   const seasonsAhead = activeSeason?.data?.season_number?.toString();
-  
-  // Função para extrair apenas o ano final da temporada
-  const getSeasonYear = (season: string) => {
-    // Remove os últimos 3 dígitos e soma 1 aos 4 primeiros
-    const year = parseInt(season.substring(0, 4)) + 1;
-    return year.toString();
-  };
+  const totalSeasons = activeSeason?.data?.total_seasons?.toString();
   
   const [currentDate, setCurrentDate] = useState(new Date());
   const [importantLinks, setImportantLinks] = useState<ImportantLink[]>([
@@ -68,137 +67,11 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
     }
   ]);
 
-  const getDayOfWeek = (date: Date) => {
-    const days = [
-      'Domingo', 'Segunda-feira', 'Terça-feira', 
-      'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
-    ];
-    return days[date.getDay()];
-  };
-
-  // Função auxiliar para pegar o Date do evento (próxima ocorrência)
-  const getEventDate = (event: FBAEvent) => {
-    // Regex melhorada para capturar dias da semana com acentos
-    const match = event.date.match(/([A-Za-zÀ-ÿçãé-]+)\s(\d{1,2})h(\d{2})?/i);
-    
-    if (!match) {
-      return null;
-    }
-    
-    const [_, diaSemana, hora, minutos] = match;
-    
-    const weekDays = [
-      'Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'
-    ];
-    const now = new Date();
-    
-    // Busca mais robusta por dia da semana
-    const dayIndex = weekDays.findIndex(d => {
-      const normalizedDay = d.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      const normalizedInput = diaSemana.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      return normalizedDay.startsWith(normalizedInput.slice(0, 3));
-    });
-    
-    if (dayIndex === -1) {
-      return null;
-    }
-    
-    const eventDate = new Date(now);
-    eventDate.setHours(parseInt(hora), minutos ? parseInt(minutos) : 0, 0, 0);
-
-    // Calcula o próximo dia da semana para o evento
-    const daysUntilEvent = (dayIndex - now.getDay() + 7) % 7;
-    eventDate.setDate(now.getDate() + daysUntilEvent);
-
-    // Se o evento é hoje mas já passou o horário, joga para a próxima semana
-    if (daysUntilEvent === 0 && eventDate <= now) {
-      eventDate.setDate(eventDate.getDate() + 7);
-    }
-
-    return eventDate;
-  };
-
-  // Função para encontrar o próximo evento baseado no dia e hora atual
-  const getNextEvent = () => {
-    const now = new Date();
-    // Ordena eventos pela data/hora da semana
-    const sortedEvents = fbaEvents
-      .map(event => ({ event, eventDate: getEventDate(event) }))
-      .filter(e => e.eventDate)
-      .sort((a, b) => (a.eventDate!.getTime() - b.eventDate!.getTime()));
-
-    // Procura o próximo evento futuro
-    for (const { event, eventDate } of sortedEvents) {
-      if (eventDate > now) {
-        return event;
-      }
-    }
-    // Se todos já passaram, retorna o primeiro evento da próxima semana
-    return sortedEvents[0]?.event || fbaEvents[0];
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  const [fbaEvents, setFbaEvents] = useState<FBAEvent[]>([
-    {
-      id: '1',
-      title: 'Início do Relógio do Draft',
-      date: 'Domingo 14h',
-      description: activeSeason?.data?.year ? `Draft classe de ${getSeasonYear(activeSeason.data.year)}` : 'Draft',
-      type: 'draft'
-    },
-    {
-      id: '2',
-      title: 'Deadline de Trades',
-      date: 'Terça-feira 23h59',
-      description: 'Último dia para realizar trades',
-      type: 'trade_deadline'
-    },
-    {
-      id: '3',
-      title: 'Deadline da FA',
-      date: 'Quarta-feira 20h',
-      description: 'Último dia para realizar requisições de FA',
-      type: 'fa_deadline'
-    },
-    {
-      id: '4',
-      title: 'Deadline envio roster regular',
-      date: 'Quinta-feira 23h59',
-      description: 'Envio do roster da temporada regular',
-      type: 'regular_roster'
-    },
-    {
-      id: '5',
-      title: 'Temporada Regular',
-      date: 'Sexta-feira 19h',
-      description: 'Transmissão da temporada regular',
-      type: 'regular_season'
-    },
-    {
-      id: '6',
-      title: 'Deadline envio roster playoffs',
-      date: 'Sábado 12h',
-      description: 'Envio do roster dos playoffs',
-      type: 'playoffs_roster'
-    },
-    {
-      id: '7',
-      title: 'Playoffs',
-      date: 'Sábado 15h',
-      description: 'Transmissão dos playoffs',
-      type: 'playoffs'
-    }
-  ]);
-
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasRegularRoster, setHasRegularRoster] = useState(false);
+  const [hasPlayoffsRoster, setHasPlayoffsRoster] = useState(false);
+  const [rostersLoading, setRostersLoading] = useState(true);
 
   // Buscar times com CAP
   useEffect(() => {
@@ -215,6 +88,30 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
 
     fetchTeams();
   }, []);
+
+  const checkRosters = async () => {
+    if (teamId && activeSeason?.data?.id) {
+      setRostersLoading(true);
+      try {
+        const regularRoster = await rosterService.getRosterByTeamAndSeason(teamId, activeSeason.data.id);
+        const playoffsRoster = await rosterPlayoffsService.getRosterByTeamAndSeason(teamId, activeSeason.data.id);
+        setHasRegularRoster(!!regularRoster);
+        setHasPlayoffsRoster(!!playoffsRoster);
+      } catch (error) {
+        console.error('Erro ao verificar rosters:', error);
+      } finally {
+        setRostersLoading(false);
+      }
+    } else {
+      setRostersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSeason?.data?.id && teamId) {
+      checkRosters();
+    }
+  }, [teamId, activeSeason?.data?.id]);
 
   // Ordena os times pelo CAP
   const sortedTeams = teams.sort((a, b) => (b.cap || 0) - (a.cap || 0));
@@ -261,6 +158,96 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
     return () => clearInterval(timer);
   }, []);
 
+  // Função para encontrar o próximo evento
+  const getNextEvent = () => {
+    if (!deadlines || deadlines.length === 0) return null;
+    
+    const now = new Date();
+    const sortedDeadlines = deadlines
+      .map(deadline => ({
+        deadline,
+        nextDate: getDisplayDate(deadline)
+      }))
+      .filter(({ nextDate }) => {
+        // Filtra apenas eventos futuros
+        return nextDate >= now;
+      })
+      .sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime());
+
+    // Retorna o primeiro evento da lista ordenada (próximo evento)
+    return sortedDeadlines[0]?.deadline || null;
+  };
+
+  // Função para obter o status do roster
+  const getRosterStatus = (deadline: Deadline) => {
+    if (deadline.type === 'regular_roster') {
+      const currentWeekDeadline = deadlineService.utils.calculateCurrentWeekDeadline(deadline);
+      const now = new Date();
+      
+      if (rostersLoading) return 'normal';
+      if (hasRegularRoster) return 'success';
+      if (now.getTime() > currentWeekDeadline.getTime()) return 'expired';
+      if (currentWeekDeadline.getTime() - now.getTime() <= 8 * 60 * 60 * 1000) return 'warning';
+      return 'normal';
+    }
+    
+    if (deadline.type === 'playoffs_roster') {
+      const currentWeekDeadline = deadlineService.utils.calculateCurrentWeekDeadline(deadline);
+      const now = new Date();
+      
+      if (rostersLoading) return 'normal';
+      if (hasPlayoffsRoster) return 'success';
+      if (now.getTime() > currentWeekDeadline.getTime()) return 'expired';
+      if (currentWeekDeadline.getTime() - now.getTime() <= 8 * 60 * 60 * 1000) return 'warning';
+      return 'normal';
+    }
+    
+    return 'normal';
+  };
+
+  // Função para verificar se pode enviar roster
+  const canSubmitRoster = (deadline: Deadline) => {
+    if (deadline.type !== 'regular_roster' && deadline.type !== 'playoffs_roster') {
+      return true;
+    }
+    
+    if (rostersLoading) return true;
+    
+    // Se já tem roster enviado, pode clicar para visualizar/editar
+    if ((deadline.type === 'regular_roster' && hasRegularRoster) || 
+        (deadline.type === 'playoffs_roster' && hasPlayoffsRoster)) {
+      return true;
+    }
+    
+    const currentWeekDeadline = deadlineService.utils.calculateCurrentWeekDeadline(deadline);
+    const now = new Date();
+    
+    return now.getTime() <= currentWeekDeadline.getTime();
+  };
+
+  // Função auxiliar para calcular a data de exibição correta
+  const getDisplayDate = (deadline: Deadline): Date => {
+    if (deadline.type === 'regular_roster' || deadline.type === 'playoffs_roster') {
+      return deadlineService.utils.calculateCurrentWeekDeadline(deadline);
+    }
+    return deadlineService.utils.calculateDeadlineDateTime(deadline);
+  };
+
+  function getLocalDateAndTime(date: Date, originalTime: string) {
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    // Use o horário original do banco!
+
+    return {
+      deadline_date: `${year}-${month}-${day}`,
+      deadline_time: originalTime
+    };
+  }
+
+  const nextEvent = getNextEvent();
+
   return (
     <div className="container mx-auto p-6 space-y-6 pb-24">
       {/* Header com Temporada e Data */}
@@ -284,7 +271,7 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                   {currentSeason}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {seasonsAhead} / 15 temporadas
+                  {seasonsAhead} / {totalSeasons} temporadas
                 </p>
               </>
             ) : (
@@ -303,14 +290,27 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {fbaEvents.length > 0 && (
+            {deadlinesLoading ? (
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-1">Carregando...</div>
+              </div>
+            ) : nextEvent ? (
               <div>
                 <div className="text-lg font-semibold mb-1">
-                  {getNextEvent().title}
+                  {nextEvent.title}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {getNextEvent().date}
+                  {deadlineService.utils.formatDeadlineDate({
+                    ...nextEvent,
+                    deadline_date: getLocalDateAndTime(getDisplayDate(nextEvent), nextEvent.deadline_time).deadline_date,
+                    deadline_time: getLocalDateAndTime(getDisplayDate(nextEvent), nextEvent.deadline_time).deadline_time
+                  })}
                 </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-lg font-semibold mb-1">Sem eventos</div>
+                <p className="text-sm text-muted-foreground">Nenhum evento programado</p>
               </div>
             )}
           </CardContent>
@@ -352,77 +352,164 @@ const Wall: React.FC<WallProps> = ({ isAdmin, teamId }) => {
           <CardTitle>Calendário da FBA</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {fbaEvents
-              .map(event => ({
-                event,
-                eventDate: getEventDate(event)
-              }))
-              .filter(e => e.eventDate)
-              .sort((a, b) => a.eventDate!.getTime() - b.eventDate!.getTime())
-              .map(({ event }) => (
-                <div
-                  key={event.id}
-                  className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => {
-                    // Eventos que redirecionam para YouTube
-                    const youtubeEvents = ['regular_season', 'playoffs'];
-                    
-                    if (youtubeEvents.includes(event.type)) {
-                      // Aqui você pode adicionar os links específicos do YouTube
-                      const youtubeLinks = {
-                        'regular_season': 'https://www.youtube.com/@fba2kleaguebrasil/live',
-                        'playoffs': 'https://www.youtube.com/@fba2kleaguebrasil/live'
-                      };
-                      
-                      const link = youtubeLinks[event.type as keyof typeof youtubeLinks];
-                      if (link) {
-                        window.open(link, '_blank');
-                        console.log(`Redirecionando para YouTube: ${event.title}`);
-                      }
-                    } else {
-                      // Eventos que abrem modal
-                      console.log(`Abrir modal para: ${event.title}`);
+          {deadlinesLoading ? (
+            <div className="text-center py-8">
+              <div className="text-lg font-semibold mb-2">Carregando eventos...</div>
+              <p className="text-sm text-muted-foreground">Buscando calendário da temporada</p>
+            </div>
+          ) : deadlines.length > 0 ? (
+            <div className="space-y-4">
+              {deadlines
+                .map(deadline => {
+                  const eventDate = getDisplayDate(deadline);
+                  return { deadline, eventDate };
+                })
+                .filter(({ eventDate }) => {
+                  const now = new Date();
+                  return eventDate >= now;
+                })
+                .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime())
+                .map(({ deadline }) => {
+                  const isRosterEvent = deadline.type === 'regular_roster' || deadline.type === 'playoffs_roster';
+                  const status = getRosterStatus(deadline);
+
+                  let icon, bgColor;
+                  if (isRosterEvent) {
+                    if (rostersLoading) {
+                      icon = <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />;
+                      bgColor = 'bg-gray-50 border-gray-200';
+                    } else if (status === 'success') {
+                      icon = <Check className="text-green-600" />;
+                      bgColor = 'bg-green-50 border-green-200';
+                    } else if (status === 'warning') {
+                      icon = <Clock className="text-yellow-600" />;
+                      bgColor = 'bg-yellow-50 border-yellow-200';
+                    } else if (status === 'expired') {
+                      icon = <AlertTriangle className="text-red-600" />;
+                      bgColor = 'bg-red-50 border-red-200';
                     }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
+                  } else {
+                    icon = null;
+                    bgColor = '';
+                  }
+
+                  const nextDate = getDisplayDate(deadline);
+                  const { deadline_date, deadline_time } = getLocalDateAndTime(nextDate, deadline.deadline_time);
+
+                  return (
                     <div
-                      className="p-2 rounded-full text-white"
-                      style={{ backgroundColor: getEventBadgeColor(event.type) }}
+                      key={deadline.id}
+                      className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors
+                        ${isRosterEvent ? bgColor : ''}
+                      `}
+                      onClick={() => {
+                        if (isRosterEvent && !canSubmitRoster(deadline)) {
+                          return;
+                        }
+                        
+                        const youtubeEvents = ['regular_season', 'playoffs'];
+                        
+                        if (youtubeEvents.includes(deadline.type)) {
+                          const youtubeLinks = {
+                            'regular_season': 'https://www.youtube.com/@fba2kleaguebrasil/live',
+                            'playoffs': 'https://www.youtube.com/@fba2kleaguebrasil/live'
+                          };
+                          
+                          const link = youtubeLinks[deadline.type as keyof typeof youtubeLinks];
+                          if (link) {
+                            window.open(link, '_blank');
+                          }
+                        } else if (deadline.type === 'regular_roster') {
+                          setIsRosterModalOpen(true);
+                        } else if (deadline.type === 'playoffs_roster') {
+                          setIsPlayoffsModalOpen(true);
+                        }
+                      }}
                     >
-                      {getEventIcon(event.type)}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{event.title}</h3>
-                        {/* Ícone do YouTube para eventos que redirecionam */}
-                        {['regular_season', 'playoffs'].includes(event.type) && (
-                          <Youtube className="h-4 w-4 text-red-600" />
-                        )}
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="p-2 rounded-full text-white"
+                          style={{ backgroundColor: getEventBadgeColor(deadline.type) }}
+                        >
+                          {getEventIcon(deadline.type)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold flex items-center gap-1">
+                              {deadline.title}
+                              {isRosterEvent && icon}
+                            </h3>
+                            {['regular_season', 'playoffs'].includes(deadline.type) && (
+                              <Youtube className="h-4 w-4 text-red-600" />
+                            )}
+                          </div>
+                          {deadline.description && (
+                            <p className="text-sm text-muted-foreground">
+                              {deadline.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {event.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {event.description}
-                        </p>
-                      )}
+                      <div className="text-right">
+                        <div className="font-semibold">
+                          {deadlineService.utils.formatDeadlineDate({
+                            ...deadline,
+                            deadline_date,
+                            deadline_time
+                          })}
+                        </div>
+                        <Badge variant="secondary" className="mt-1">
+                          {deadline.type.replace('_', ' ')}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold">
-                      {event.date}
-                    </div>
-                    <Badge variant="secondary" className="mt-1">
-                      {event.type.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-          </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-lg font-semibold mb-2">Sem eventos</div>
+              <p className="text-sm text-muted-foreground">Nenhum evento programado para esta temporada</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Modal para gerenciar roster da temporada */}
+      <RosterSeasonForm
+        isOpen={isRosterModalOpen}
+        onClose={() => setIsRosterModalOpen(false)}
+        teamId={teamId}
+        seasonId={activeSeason?.data?.id || 1}
+        isAdmin={isAdmin}
+        deadline={deadlines.find(d => d.type === 'regular_roster') ? 
+          deadlineService.utils.calculateCurrentWeekDeadline(deadlines.find(d => d.type === 'regular_roster')!) : 
+          undefined}
+        hasExistingRoster={hasRegularRoster}
+        onSuccess={async () => {
+          await checkRosters();
+          setIsRosterModalOpen(false);
+        }}
+      />
+
+      {/* Modal para gerenciar roster playoffs */}
+      <RosterPlayoffsForm
+        isOpen={isPlayoffsModalOpen}
+        onClose={() => setIsPlayoffsModalOpen(false)}
+        teamId={teamId}
+        seasonId={activeSeason?.data?.id || 1}
+        isAdmin={isAdmin}
+        deadline={deadlines.find(d => d.type === 'playoffs_roster') ? 
+          deadlineService.utils.calculateCurrentWeekDeadline(deadlines.find(d => d.type === 'playoffs_roster')!) : 
+          undefined}
+        hasExistingRoster={hasPlayoffsRoster}
+        onSuccess={async () => {
+          await checkRosters();
+          setIsPlayoffsModalOpen(false);
+        }}
+      />
     </div>
   );
 };
 
-export default Wall;
+export default WallUpdated; 

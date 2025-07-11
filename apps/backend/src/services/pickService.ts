@@ -2,7 +2,17 @@ import pool from '@/utils/postgresClient';
 
 export class PickService {
   static async getAllPicks() {
-    const { rows } = await pool.query('SELECT * FROM picks');
+    const { rows } = await pool.query(`
+      SELECT picks.*, 
+             CAST(SPLIT_PART(s.year, '/', 1) AS INTEGER) as season_year, 
+             t1.name as original_team_name, 
+             t2.name as current_team_name
+      FROM picks
+      JOIN seasons s ON picks.season_id = s.id
+      JOIN teams t1 ON picks.original_team_id = t1.id
+      JOIN teams t2 ON picks.current_team_id = t2.id
+      ORDER BY season_year DESC, picks.round DESC
+    `);
     return rows;
   }
 

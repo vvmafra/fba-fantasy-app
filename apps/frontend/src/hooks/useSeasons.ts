@@ -9,6 +9,14 @@ export const useSeasons = () => {
   });
 };
 
+// Hook para buscar todas as temporadas a partir da ativa
+export const useSeasonsFromActive = () => {
+  return useQuery({
+    queryKey: ['seasons-from-active'],
+    queryFn: seasonService.getSeasonsFromActive,
+  });
+};
+
 // Hook para buscar temporada por ID
 export const useSeason = (id: number) => {
   return useQuery({
