@@ -1,24 +1,20 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DndContext, closestCenter, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { UserX, Star, Crown, FileX, Loader2, Pencil, Check, X } from 'lucide-react';
+import { UserX, Star, Crown, FileX, Loader2, Pencil, Check, X, ChevronUp, ChevronDown, GripVertical, Copy } from 'lucide-react';
 import { usePlayersByTeam, useReleasePlayer, useUpdatePlayer } from '@/hooks/usePlayers';
 import { useTeam, useUpdateTeam } from '@/hooks/useTeams';
 import { Player } from '@/services/playerService';
 import { config } from '@/lib/config';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-
-// Suprimir warnings específicos do react-beautiful-dnd
-const originalError = console.error;
-console.error = (...args) => {
-  if (args[0]?.includes?.('defaultProps') || args[0]?.includes?.('Maximum update depth')) {
-    return;
-  }
-  originalError.call(console, ...args);
-};
+import ModalAddPlayer from './ModalAddPlayer';
+import TeamPicks from './TeamPicks';
 
 interface MyTeamProps {
   isAdmin: boolean;
@@ -27,6 +23,36 @@ interface MyTeamProps {
 
 // Posições dos titulares em ordem
 const STARTER_POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
+
+function formatPlayerName(name: string, maxLength = 12) {
+  if (!name) return '';
+  if (name.length <= maxLength) return name;
+
+  const parts = name.split(' ');
+  if (parts.length === 1) return name.slice(0, maxLength) + '...';
+
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  const shortName = `${firstName[0]}. ${lastName}`;
+
+  // Se ainda ficou grande, trunca com ...
+  if (shortName.length > maxLength) {
+    return shortName.slice(0, maxLength - 3) + '...';
+  }
+  return shortName;
+}
+
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < breakpoint);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [breakpoint]);
+
+  return isMobile;
+}
 
 const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const { teamId } = useParams();
@@ -52,6 +78,19 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   // Estado para edição inline
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{ ovr: number; age: number }>({ ovr: 0, age: 0 });
+
+  // Estado para controlar o modal de adicionar jogador
+  const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
+
+  // Estado para controlar a minimização das seções
+  const [showStarters, setShowStarters] = useState(true);
+  const [showBench, setShowBench] = useState(true);
+
+  // Estado para drag and drop
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Estado para seleção por clique
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
 
   // Função para ordenar jogadores baseado na ordem salva
   const orderPlayersBySavedOrder = useCallback((players: Player[], savedOrder: any) => {
@@ -123,46 +162,61 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   }, [savePlayerOrder]);
 
   // Função para lidar com o drag and drop
-  const handleDragEnd = useCallback((result: DropResult) => {
-    const { source, destination } = result;
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
 
-    // Se não há destino válido, não faz nada
-    if (!destination) return;
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
 
-    const sourceList = source.droppableId;
-    const destList = destination.droppableId;
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Se está movendo para a mesma posição, não faz nada
+    if (activeId === overId) return;
+
+    // Encontrar em qual lista está o item ativo
+    const activePlayer = [...starters, ...bench].find(p => p.id.toString() === activeId);
+    if (!activePlayer) return;
+
+    const isActiveInStarters = starters.some(p => p.id.toString() === activeId);
+    const isOverInStarters = starters.some(p => p.id.toString() === overId);
 
     let newStarters = [...starters];
     let newBench = [...bench];
 
     // Se está movendo dentro da mesma lista
-    if (sourceList === destList) {
-      const list = sourceList === 'starters' ? newStarters : newBench;
-      const [removed] = list.splice(source.index, 1);
-      list.splice(destination.index, 0, removed);
-
-      if (sourceList === 'starters') {
-        newStarters = list;
+    if (isActiveInStarters === isOverInStarters) {
+      if (isActiveInStarters) {
+        // Movendo dentro dos titulares
+        const oldIndex = starters.findIndex(p => p.id.toString() === activeId);
+        const newIndex = starters.findIndex(p => p.id.toString() === overId);
+        newStarters = arrayMove(starters, oldIndex, newIndex);
       } else {
-        newBench = list;
+        // Movendo dentro das reservas
+        const oldIndex = bench.findIndex(p => p.id.toString() === activeId);
+        const newIndex = bench.findIndex(p => p.id.toString() === overId);
+        newBench = arrayMove(bench, oldIndex, newIndex);
       }
     } else {
-      // Se está movendo entre listas diferentes
-      const sourceListData = sourceList === 'starters' ? newStarters : newBench;
-      const destListData = destList === 'starters' ? newStarters : newBench;
-
-      const newSourceList = Array.from(sourceListData);
-      const newDestList = Array.from(destListData);
-
-      const [removed] = newSourceList.splice(source.index, 1);
-      newDestList.splice(destination.index, 0, removed);
-
-      if (sourceList === 'starters') {
-        newStarters = newSourceList;
-        newBench = newDestList;
+      // Movendo entre listas diferentes
+      if (isActiveInStarters) {
+        // Movendo de titulares para reservas
+        const starterIndex = starters.findIndex(p => p.id.toString() === activeId);
+        const benchIndex = bench.findIndex(p => p.id.toString() === overId);
+        
+        const [movedPlayer] = newStarters.splice(starterIndex, 1);
+        newBench.splice(benchIndex, 0, movedPlayer);
       } else {
-        newBench = newSourceList;
-        newStarters = newDestList;
+        // Movendo de reservas para titulares
+        const benchIndex = bench.findIndex(p => p.id.toString() === activeId);
+        const starterIndex = starters.findIndex(p => p.id.toString() === overId);
+        
+        const [movedPlayer] = newBench.splice(benchIndex, 1);
+        newStarters.splice(starterIndex, 0, movedPlayer);
       }
     }
 
@@ -206,89 +260,176 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const handleReleasePlayer = (playerId: number) => {
     releasePlayerMutation.mutate(playerId);
   };
-  console.log(team?.data?.player_order)
 
   const maxStarterOvr = useMemo(() => {
     if (starters.length === 0) return null;
     return Math.max(...starters.map(p => p.ovr));
   }, [starters]);
 
-  const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number }) => {
+  // Função para troca por clique
+  const handlePlayerClick = (playerId: number) => {
+    if (selectedPlayerId === null) {
+      setSelectedPlayerId(playerId);
+      return;
+    }
+    if (selectedPlayerId === playerId) {
+      setSelectedPlayerId(null);
+      return;
+    }
+    // Encontrar ambos jogadores e seus grupos
+    let startersIdx = starters.findIndex(p => p.id === selectedPlayerId);
+    let benchIdx = bench.findIndex(p => p.id === selectedPlayerId);
+    let otherStartersIdx = starters.findIndex(p => p.id === playerId);
+    let otherBenchIdx = bench.findIndex(p => p.id === playerId);
+
+    let newStarters = [...starters];
+    let newBench = [...bench];
+
+    if (startersIdx !== -1 && otherStartersIdx !== -1) {
+      // Troca dentro dos titulares
+      [newStarters[startersIdx], newStarters[otherStartersIdx]] = [newStarters[otherStartersIdx], newStarters[startersIdx]];
+    } else if (benchIdx !== -1 && otherBenchIdx !== -1) {
+      // Troca dentro das reservas
+      [newBench[benchIdx], newBench[otherBenchIdx]] = [newBench[otherBenchIdx], newBench[benchIdx]];
+    } else if (startersIdx !== -1 && otherBenchIdx !== -1) {
+      // Troca entre titular e reserva
+      const temp = newStarters[startersIdx];
+      newStarters[startersIdx] = newBench[otherBenchIdx];
+      newBench[otherBenchIdx] = temp;
+    } else if (benchIdx !== -1 && otherStartersIdx !== -1) {
+      // Troca entre reserva e titular
+      const temp = newBench[benchIdx];
+      newBench[benchIdx] = newStarters[otherStartersIdx];
+      newStarters[otherStartersIdx] = temp;
+    }
+    setStarters(newStarters);
+    setBench(newBench);
+    debouncedSave(newStarters, newBench);
+    setSelectedPlayerId(null);
+  };
+
+  const handleCopyTeam = () => {
+    if (!team?.data) return;
+    const startersList = starters.map((p, idx) => `${STARTER_POSITIONS[idx]}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
+    const capLine = `CAP: ${minCap} / **${currentCap}** / ${maxCap}`;
+    const text = `**${team.data.name}**\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n\n${capLine}`;
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
+  };
+
+  // Componente SortablePlayerCard
+  const SortablePlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr, onClick, selected }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number; onClick?: () => void; selected?: boolean }) => {
     const isEditing = editingPlayerId === player.id;
+    
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: player.id.toString() });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    const isMobile = useIsMobile();
+
     return (
-      <Draggable draggableId={player.id.toString()} index={index}>
-        {(provided, snapshot) => (
-          <Card 
-            className={`mb-3 transition-all cursor-grab active:cursor-grabbing ${snapshot.isDragging ? 'shadow-lg scale-105' : ''}`}
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            {...provided.dragHandleProps}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                {/* Coluna do badge */}
-                <div className="flex flex-col items-center justify-center col-span-1">
-                  <Badge 
-                    className={`text-white w-[40px] flex items-center justify-center 
-                      ${
-                        STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
-                        STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
-                        STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
-                        STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
-                        'bg-blue-800' // C
-                      }`}
+      <Card 
+        ref={setNodeRef}
+        style={style}
+        className={`mb-3 transition-all relative ${
+          isDragging ? 'shadow-lg scale-105 z-50' : ''
+        } ${selected ? 'ring-2 ring-blue-600' : ''}`}
+        onClick={onClick}
+      >
+        <CardContent className="p-4 relative">
+          <div className="flex items-center justify-between">
+            {/* Handle de drag */}
+            <div
+              className="mr-2 flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+              title="Arraste para mover"
+            >
+              {/* Ícone de drag and drop padrão */}
+              <GripVertical size={16} />
+            </div>
+
+            {/* O resto do card */}
+            <div className="flex items-center w-full min-w-0">
+              {/* Badge */}
+              <div className="flex flex-col items-center justify-center col-span-1">
+                <Badge 
+                  className={`text-white w-[40px] flex items-center justify-center
+                    ${
+                      STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
+                      STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
+                      STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
+                      STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
+                      'bg-blue-800' // C
+                    }`}
+                >
+                  {isStarter ? STARTER_POSITIONS[index] : player.position}
+                </Badge>
+              </div>
+              {/* Nome, idade e OVR */}
+              <div className="flex-1 flex items-center min-w-0 ml-2 sm:ml-3">
+                <div className="flex-1 min-w-0">
+                  <h3
+                    className="font-semibold truncate flex-1 min-w-0 text-[15px] sm:text-md"
+                    title={player.name}
                   >
-                    {isStarter ? STARTER_POSITIONS[index] : player.position}
-                  </Badge>
-                </div>
-                {/* Conteúdo do jogador */}
-                <div className="flex items-center"></div>
-                <div className="flex-1 ml-3 min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <h3
-                      className="font-semibold text-md truncate"
-                      title={player.name}
-                    >
-                      {player.name}
-                    </h3>
-                  </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-600">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="number"
-                          className="border rounded px-1 w-12 text-center"
-                          value={editValues.age}
-                          min={10}
-                          max={50}
-                          onChange={e => setEditValues(v => ({ ...v, age: Number(e.target.value) }))}
-                        />
-                        <span>y</span>
-                      </>
-                    ) : (
-                      <span>{player.age}y</span>
-                    )}
-                  </div>
+                    {isMobile ? formatPlayerName(player.name) : player.name}
+                  </h3>
+                  {isEditing ? (
+                    <input
+                      type="number"
+                      className="border rounded px-1 w-10 text-center text-xs text-gray-500 mt-1 sm:w-12"
+                      value={editValues.age}
+                      min={16}
+                      max={50}
+                      onChange={e => setEditValues(v => ({ ...v, age: Number(e.target.value) }))}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <div className="text-xs text-gray-500 mt-1">{player.age}y</div>
+                  )}
                 </div>
                 {isEditing ? (
                   <input
                     type="number"
-                    className="border rounded px-1 w-14 text-center text-2xl font-bold text-gray-800 mr-5"
+                    className="border rounded px-1 w-10 text-center text-lg font-bold text-gray-800 ml-2 sm:w-14 sm:text-2xl"
                     value={editValues.ovr}
                     min={0}
                     max={150}
                     onChange={e => setEditValues(v => ({ ...v, ovr: Number(e.target.value) }))}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                   />
                 ) : (
-                  <span className="text-2xl font-bold text-gray-800 mr-5">{player.ovr}</span>
+                  <span className="font-bold text-gray-800 ml-2 text-lg sm:text-2xl">{player.ovr}</span>
                 )}
+              </div>
+              {/* Botões */}
+              <div className="flex gap-1 ml-2">
                 {isEditing ? (
                   <>
                     <Button
                       variant="outline"
                       size="sm"
                       className="text-green-600 hover:text-green-700"
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        e.stopPropagation();
                         // Modal de confirmação
                         if (window.confirm('Tem certeza que deseja editar o jogador?')) {
                           updatePlayerMutation.mutate(
@@ -311,6 +452,8 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                           );
                         }
                       }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                       disabled={updatePlayerMutation.isPending}
                     >
                       {updatePlayerMutation.isPending ? (
@@ -323,10 +466,13 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                       variant="outline"
                       size="sm"
                       className="text-red-600 hover:text-red-700"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingPlayerId(null);
                         setEditValues({ ovr: 0, age: 0 });
                       }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
                     >
                       <X size={16} />
                     </Button>
@@ -336,10 +482,13 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     variant="outline"
                     size="sm"
                     className="text-blue-600 hover:text-blue-700"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditingPlayerId(player.id);
                       setEditValues({ ovr: player.ovr, age: player.age });
                     }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                   >
                     <Pencil size={16} />
                   </Button>
@@ -349,7 +498,12 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700"
-                    onClick={() => setPlayerToRelease(player)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPlayerToRelease(player);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     disabled={releasePlayerMutation.isPending}
                   >
                     {releasePlayerMutation.isPending ? (
@@ -360,10 +514,10 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                   </Button>
                 )}
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </Draggable>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   });
 
@@ -406,13 +560,17 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DndContext
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="p-4 pb-20 space-y-6">
         {/* Team Summary */}
         <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{team?.data?.name}</span>
+              <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -428,8 +586,14 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
               </div>
 
               <div>
-                <p className="text-2xl font-bold">{teamPlayers.length}</p>
-                <p className="text-sm opacity-80">Jogadores</p>
+                <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
+                <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
+                {teamPlayers.length < 13 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
+                )}
+                {teamPlayers.length > 15 && (
+                  <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
+                )}
               </div>
             </div>
           </CardContent>
@@ -477,26 +641,32 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
         </div>
 
         {/* Starters */}
-        <div>
-          <h2 className="text-xl font-bold mb-4 flex items-center">
-            <Crown className="mr-2 text-nba-orange" />
-            Quinteto Titular
-          </h2>
-          <Droppable droppableId="starters">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`min-h-[200px] ${snapshot.isDraggingOver ? 'bg-blue-50 rounded-lg' : ''}`}
-              >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center">
+              <Crown className="mr-2 text-nba-orange" />
+              Quinteto Titular
+              <button onClick={handleCopyTeam} className="ml-2 p-1 rounded hover:bg-gray-200" title="Copiar informações do time">
+                <Copy size={18} />
+              </button>
+            </h2>
+            <Button variant="ghost" size="icon" onClick={() => setShowStarters(v => !v)}>
+              {showStarters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </Button>
+          </div>
+          {showStarters && (
+            <SortableContext items={starters.map(p => p.id.toString())} strategy={verticalListSortingStrategy}>
+              <div className="min-h-[200px]">
                 {starters.length > 0 ? (
                   starters.map((player, index) => (
-                    <PlayerCard
+                    <SortablePlayerCard
                       key={player.id}
                       player={player}
                       index={index}
                       isStarter={true}
                       maxStarterOvr={maxStarterOvr}
+                      onClick={() => handlePlayerClick(player.id)}
+                      selected={selectedPlayerId === player.id}
                     />
                   ))
                 ) : (
@@ -506,25 +676,25 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     </CardContent>
                   </Card>
                 )}
-                {provided.placeholder}
               </div>
-            )}
-          </Droppable>
+            </SortableContext>
+          )}
         </div>
 
         {/* Bench */}
-        <div>
-          <h2 className="text-xl font-bold mb-4">Reservas</h2>
-          <Droppable droppableId="bench">
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className={`min-h-[200px] ${snapshot.isDraggingOver ? 'bg-green-50 rounded-lg' : ''}`}
-              >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold">Reservas</h2>
+            <Button variant="ghost" size="icon" onClick={() => setShowBench(v => !v)}>
+              {showBench ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </Button>
+          </div>
+          {showBench && (
+            <SortableContext items={bench.map(p => p.id.toString())} strategy={verticalListSortingStrategy}>
+              <div className="min-h-[200px]">
                 {bench.length > 0 ? (
                   bench.map((player, index) => (
-                    <PlayerCard key={player.id} player={player} index={index} />
+                    <SortablePlayerCard key={player.id} player={player} index={index} onClick={() => handlePlayerClick(player.id)} selected={selectedPlayerId === player.id} />
                   ))
                 ) : (
                   <Card>
@@ -533,29 +703,22 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     </CardContent>
                   </Card>
                 )}
-                {provided.placeholder}
               </div>
-            )}
-          </Droppable>
+            </SortableContext>
+          )}
         </div>
 
-        {/* Admin Actions */}
-        {isAdmin && (
-          <Card className="border-2 border-dashed border-nba-orange">
-            <CardContent className="p-4 text-center">
-              <h3 className="font-semibold mb-2">Ações de Admin</h3>
-              <div className="flex space-x-2">
-                <Button className="flex-1 bg-nba-orange hover:bg-nba-orange/90">
-                  Adicionar Jogador
-                </Button>
-                <Button variant="outline" className="flex-1">
-                  Editar Elenco
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Componente de Picks */}
+        <TeamPicks teamId={numericTeamId} />
       </div>
+
+      {/* Modal para adicionar jogador */}
+      <ModalAddPlayer
+        isOpen={isAddPlayerModalOpen}
+        onClose={() => setIsAddPlayerModalOpen(false)}
+        teamId={numericTeamId}
+      />
+
       {playerToRelease && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
           <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
@@ -584,7 +747,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
           </div>
         </div>
       )}
-    </DragDropContext>
+    </DndContext>
   );
 };
 

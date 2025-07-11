@@ -13,8 +13,6 @@ interface TeamContext {
 const TeamViewPage = () => {
   const { user, isAdmin: authAdmin } = useAuth();
   const { otherTeamId } = useParams();
-
-  console.log(otherTeamId);
   
   return <ViewTeam isAdmin={authAdmin} teamId={parseInt(otherTeamId)} />
 };

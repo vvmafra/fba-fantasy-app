@@ -72,8 +72,7 @@ router.get('/trades', authenticateAndRequireAnyTeam, (req, res) => {
 router.post('/teams/:id/players', 
   authenticateAndRequireTeamOwnership, // Primeiro verifica ownership do time
   (req, res, next) => {
-    // Middleware customizado adicional
-    console.log('Middleware customizado executado');
+    // Middleware customizado adicional 
     next();
   },
   (req, res) => {

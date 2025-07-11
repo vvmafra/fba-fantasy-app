@@ -47,7 +47,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('storage', updateUserFromStorage);
   }, []);
 
-    console.log(user);
   return (
     <AuthContext.Provider
       value={{

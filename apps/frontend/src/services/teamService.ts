@@ -6,6 +6,7 @@ export interface Team {
   name: string;
   abbreviation: string;
   owner_id: number | null;
+  owner_name?: string | null;
   created_at?: string;
   updated_at?: string;
   player_order?: {
@@ -14,6 +15,8 @@ export interface Team {
     last_updated?: string;
   } | null;
   cap?: number; // CAP (soma dos 8 maiores overalls)
+  logo_path?: string | null;
+  conference?: string | null;
 }
 
 export interface CreateTeamData {

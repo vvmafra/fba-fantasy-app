@@ -90,13 +90,17 @@ export const playerService = {
   getPlayersByTeam: (teamId: number) =>
     apiRequest.get<Player[]>(`/players/team/${teamId}`),
 
+  // Buscar todos os players de um time (sem paginação)
+  getAllPlayersByTeam: (teamId: number) =>
+    apiRequest.get<Player[]>(`/players/team/${teamId}?limit=1000`),
+
   // Buscar players por posição
   // getPlayersByPosition: (position: string) =>
   //   apiRequest.get<Player[]>(`/players/position/${position}`),
 
   // Criar novo player
-  // createPlayer: (data: CreatePlayerData) =>
-  //   apiRequest.post<Player>('/players', data),
+  createPlayer: (data: CreatePlayerData) =>
+    apiRequest.post<Player>('/players', data),
 
   // Criar player via OCR
   createPlayerOCR: (data: OCRRequestData) =>

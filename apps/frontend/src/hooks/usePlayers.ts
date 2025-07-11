@@ -15,10 +15,14 @@ export const playerKeys = {
 };
 
 // Hook para buscar todos os players
-export const usePlayers = (params?: PlayerQueryParams) => {
+export const usePlayers = (params?: PlayerQueryParams & { getAll?: boolean }) => {
+  const queryParams = params?.getAll 
+    ? { ...params, limit: 1000, page: 1 } // Força buscar todos
+    : params;
+    
   return useQuery({
-    queryKey: playerKeys.list(params || {}),
-    queryFn: () => playerService.getAllPlayers(params),
+    queryKey: playerKeys.list(queryParams || {}),
+    queryFn: () => playerService.getAllPlayers(queryParams),
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 };
@@ -43,7 +47,6 @@ export const usePlayer = (id: number) => {
 
 // Hook para buscar players por time
 export const usePlayersByTeam = (teamId: number) => {
-  console.log('teamId', teamId);
   return useQuery({
     queryKey: playerKeys.byTeam(teamId),
     queryFn: () => playerService.getPlayersByTeam(teamId),
@@ -62,29 +65,35 @@ export const usePlayersByTeam = (teamId: number) => {
 // };
 
 // Hook para criar player
-// export const useCreatePlayer = () => {
-//   const queryClient = useQueryClient();
-//   const { toast } = useToast();
+export const useCreatePlayer = (teamId?: number) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-//   return useMutation({
-//     mutationFn: (data: CreatePlayerData) => playerService.createPlayer(data),
-//     onSuccess: (data) => {
-//       queryClient.invalidateQueries({ queryKey: playerKeys.lists() });
-//       queryClient.invalidateQueries({ queryKey: playerKeys.freeAgents() });
-//       toast({
-//         title: "Sucesso!",
-//         description: `Player ${data.data?.name} criado com sucesso.`,
-//       });
-//     },
-//     onError: (error: any) => {
-//       toast({
-//         title: "Erro!",
-//         description: error.response?.data?.message || "Erro ao criar player.",
-//         variant: "destructive",
-//       });
-//     },
-//   });
-// };
+  return useMutation({
+    mutationFn: (data: CreatePlayerData) => playerService.createPlayer(data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: playerKeys.lists() });
+      // queryClient.invalidateQueries({ queryKey: playerKeys.freeAgents() });
+      
+      // Se temos um teamId, invalida o cache da lista do time
+      if (teamId) {
+        queryClient.invalidateQueries({ queryKey: playerKeys.byTeam(teamId) });
+      }
+      
+      toast({
+        title: "Sucesso!",
+        description: `Jogador ${data.data?.name} criado com sucesso.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro!",
+        description: error.response?.data?.message || "Erro ao criar jogador.",
+        variant: "destructive",
+      });
+    },
+  });
+};
 
 // Hook para atualizar player
 export const useUpdatePlayer = (teamId?: number) => {
@@ -225,4 +234,14 @@ export const useDeletePlayer = () => {
 //       });
 //     },
 //   });
-// }; 
+// };
+
+// Hook para buscar todos os players de um time (sem paginação)
+export const useAllPlayersByTeam = (teamId: number) => {
+  return useQuery({
+    queryKey: [...playerKeys.byTeam(teamId), 'all'],
+    queryFn: () => playerService.getAllPlayersByTeam(teamId),
+    enabled: !!teamId,
+    staleTime: 3 * 60 * 1000, // 3 minutos
+  });
+};

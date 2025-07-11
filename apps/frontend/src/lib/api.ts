@@ -42,7 +42,6 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-console.log("API BASE URL:", config.apiUrl);
 
 // Tipos de resposta da API
 export interface ApiResponse<T = any> {

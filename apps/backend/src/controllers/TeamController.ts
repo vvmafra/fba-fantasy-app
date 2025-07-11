@@ -30,17 +30,13 @@ export class TeamController {
   // GET /api/v1/teams/my-teams - Buscar times do usuário autenticado
   static getMyTeams = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user;
-    console.log("user: ", user);
     if (!user) {
-      console.log("Usuário não autenticado");
       res.status(401).json({ success: false, message: 'Usuário não autenticado' });
       return;
     }
     
     const ownerId = Number(user.id);
-    console.log("ownerId: ", ownerId);
     const teams = await TeamService.getTeamsByOwnerId(ownerId);
-    console.log("teams retornados: ", teams);
     res.status(200).json({ success: true, data: teams });
   });
 
@@ -63,11 +59,6 @@ export class TeamController {
     
     const teamData: UpdateTeamRequest = req.body;
     const isAdmin = user.role === 'admin';
-    
-    console.log(`=== ATUALIZAÇÃO DE TIME ${id} ===`);
-    console.log(`Usuário: ${user.id} (${user.email}) - Role: ${user.role}`);
-    console.log(`Campos sendo alterados:`, Object.keys(teamData));
-    console.log(`Dados:`, teamData);
     
     const team = await TeamService.updateTeam(Number(id), teamData);
     

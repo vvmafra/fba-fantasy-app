@@ -12,8 +12,8 @@ const Navigation = ({ teamId, isAdmin }: NavigationProps) => {
   
   const tabs = [
     { id: 'home', label: 'Home', icon: Home, path: `/team/${teamId}/wall` },
-    { id: 'team', label: 'Meu Time', icon: Users, path: `/team/${teamId}/myteam` },
-    { id: 'draft', label: 'Draft', icon: UserCheck, path: `/team/${teamId}/free-agents` },
+    { id: 'team', label: 'Time', icon: Users, path: `/team/${teamId}/myteam` },
+    // { id: 'draft', label: 'Draft', icon: UserCheck, path: `/team/${teamId}/free-agents` },
     { id: 'trades', label: 'Trades', icon: MessageSquare, path: `/team/${teamId}/trades` },
     { id: 'stats', label: 'Estatísticas', icon: BarChart3, path: `/team/${teamId}/statistics` },
   ];

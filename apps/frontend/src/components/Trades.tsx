@@ -1,33 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus } from 'lucide-react';
-
-interface Trade {
-  id: string;
-  proposedBy: string;
-  teams: string[];
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  createdAt: string;
-  players: {
-    from: string;
-    to: string;
-    playerName: string;
-  }[];
-  picks: {
-    from: string;
-    to: string;
-    year: number;
-    round: number;
-  }[];
-  comments: {
-    user: string;
-    message: string;
-    timestamp: string;
-  }[];
-}
+import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade } from '@/hooks/useTrades';
+import { useTeams } from '@/hooks/useTeams';
+import { useSeasonsFromActive } from '@/hooks/useSeasons';
+import { TradeWithDetails } from '@/services/tradeService';
+import TradeProposal from './forms/tradeProposal';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TradesProps {
   isAdmin: boolean;
@@ -35,56 +17,54 @@ interface TradesProps {
 }
 
 const Trades = ({ isAdmin, teamId }: TradesProps) => {
-  const [selectedTrade, setSelectedTrade] = useState<string | null>(null);
+  const [selectedTrade, setSelectedTrade] = useState<number | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [currentSeason, setCurrentSeason] = useState<number>(1);
+  const [showMyExecuted, setShowMyExecuted] = useState(true);
+  const [showMyPending, setShowMyPending] = useState(true);
+  const [showLeagueExecuted, setShowLeagueExecuted] = useState(true);
 
-  // Mock data - será substituído por dados reais do Supabase
-  const mockTrades: Trade[] = [
-    {
-      id: '1',
-      proposedBy: 'Lakers',
-      teams: ['Lakers', 'Heat', 'Celtics'],
-      status: 'pending',
-      createdAt: '2024-01-20',
-      players: [
-        { from: 'Lakers', to: 'Heat', playerName: 'D\'Angelo Russell' },
-        { from: 'Heat', to: 'Lakers', playerName: 'Tyler Herro' },
-        { from: 'Celtics', to: 'Lakers', playerName: 'Malcolm Brogdon' }
-      ],
-      picks: [
-        { from: 'Lakers', to: 'Heat', year: 2025, round: 2 }
-      ],
-      comments: [
-        { user: 'Heat GM', message: 'Interessante proposta, mas preciso pensar melhor.', timestamp: '2024-01-20T15:30:00Z' },
-        { user: 'Celtics GM', message: 'Estou dentro!', timestamp: '2024-01-20T16:00:00Z' }
-      ]
-    },
-    {
-      id: '2',
-      proposedBy: 'Celtics',
-      teams: ['Lakers', 'Celtics'],
-      status: 'completed',
-      createdAt: '2024-01-15',
-      players: [
-        { from: 'Lakers', to: 'Celtics', playerName: 'Russell Westbrook' },
-        { from: 'Celtics', to: 'Lakers', playerName: 'Marcus Smart' }
-      ],
-      picks: [],
-      comments: [
-        { user: 'Admin', message: 'Trade confirmado e processado!', timestamp: '2024-01-16T10:00:00Z' }
-      ]
-    }
-  ];
+  
 
-  const getStatusBadge = (status: Trade['status']) => {
-    const statusConfig = {
+  // Hooks
+  const { data: tradesData } = useTrades({ status: 'executed', sortBy: 'executed_at', sortOrder: 'desc' });
+  const { data: myTradesData, refetch: refetchMyTrades } = useTradesByTeam(teamId || 0, currentSeason);
+  const { data: countsData } = useTradeCounts(currentSeason);
+  const { data: teamsData } = useTeams();
+  const { data: seasonsData } = useSeasonsFromActive();
+  
+  const updateResponseMutation = useUpdateTradeResponse();
+  const executeTradeMutation = useExecuteTrade();
+  const revertTradeMutation = useRevertTrade();
+  const { user } = useAuth();
+
+  // Separar trades por categoria
+  // Filtra apenas trades válidas (ignora canceladas e revertidas)
+  const myValidTrades = myTradesData?.data?.filter(
+    t => t.status !== 'cancelled' && t.status !== 'reverted'
+  ) || [];
+
+  const myPendingTrades = myValidTrades.filter(
+    t => t.status === 'pending' || t.status === 'proposed'
+  ) || [];
+  const myExecutedTrades = myValidTrades.filter(
+    t => t.status === 'executed'
+  ) || [];
+  
+  const leagueExecutedTrades = tradesData?.data || [];
+
+  const pendingCount = myPendingTrades.length;
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
+      proposed: { color: 'bg-blue-100 text-blue-800', icon: Clock, label: 'Proposta' },
       pending: { color: 'bg-yellow-100 text-yellow-800', icon: Clock, label: 'Pendente' },
-      accepted: { color: 'bg-blue-100 text-blue-800', icon: CheckCircle, label: 'Aceito' },
-      rejected: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Rejeitado' },
-      completed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Concluído' }
+      executed: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Executada' },
+      reverted: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Revertida' },
+      cancelled: { color: 'bg-gray-100 text-gray-800', icon: XCircle, label: 'Cancelada' }
     };
     
-    const config = statusConfig[status];
+    const config = statusConfig[status] || statusConfig.proposed;
     const Icon = config.icon;
     
     return (
@@ -95,119 +75,178 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
     );
   };
 
-  const TradeCard = ({ trade }: { trade: Trade }) => (
-    <Card className="mb-4">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span className="text-lg">Trade #{trade.id}</span>
-          {getStatusBadge(trade.status)}
-        </CardTitle>
-        <p className="text-sm text-gray-600">
-          Proposto por {trade.proposedBy} • {new Date(trade.createdAt).toLocaleDateString('pt-BR')}
-        </p>
-      </CardHeader>
+  const getTeamName = (teamId: number) => {
+    return teamsData?.data?.find(team => team.id === teamId)?.name || `Time ${teamId}`;
+  };
+
+  const getSeasonName = (seasonId: number) => {
+    const season = seasonsData?.data?.find(season => season.id === seasonId);
+    // if (!season) return `Temporada ${seasonId}`;
+    return `${season.season_number} (${season.year})`;
+  };
+
+  const handleRespondToTrade = async (participantId: number, response: 'accepted' | 'rejected') => {
+    try {
+      await updateResponseMutation.mutateAsync({
+        participantId,
+        data: { response_status: response }
+      });
       
-      <CardContent className="space-y-4">
-        {/* Teams Involved */}
-        <div className="flex items-center justify-center space-x-2 text-sm">
-          {trade.teams.map((team, index) => (
-            <React.Fragment key={team}>
-              <span className="font-medium px-2 py-1 bg-nba-blue text-white rounded">
-                {team}
-              </span>
-              {index < trade.teams.length - 1 && <ArrowRight size={16} />}
-            </React.Fragment>
-          ))}
-        </div>
+      // Forçar refetch das trades do time após a resposta
+      setTimeout(() => {
+        refetchMyTrades();
+      }, 500); // Pequeno delay para garantir que o backend processou
+    } catch (error) {
+      console.error('Erro ao responder à trade:', error);
+    }
+  };
 
-        {/* Players */}
-        <div>
-          <h4 className="font-medium mb-2">Jogadores:</h4>
-          {trade.players.map((player, index) => (
-            <div key={index} className="flex items-center text-sm mb-1">
-              <span>{player.playerName}</span>
-              <ArrowRight size={14} className="mx-2 text-gray-400" />
-              <span className="text-nba-blue font-medium">{player.to}</span>
-            </div>
-          ))}
-        </div>
+  const handleExecuteTrade = async (tradeId: number) => {
+    try {
+      await executeTradeMutation.mutateAsync(tradeId);
+    } catch (error) {
+      console.error('Erro ao executar trade:', error);
+    }
+  };
 
-        {/* Picks */}
-        {trade.picks.length > 0 && (
-          <div>
-            <h4 className="font-medium mb-2">Picks:</h4>
-            {trade.picks.map((pick, index) => (
-              <div key={index} className="flex items-center text-sm mb-1">
-                <span>{pick.year} - {pick.round}ª Rodada</span>
-                <ArrowRight size={14} className="mx-2 text-gray-400" />
-                <span className="text-nba-blue font-medium">{pick.to}</span>
-              </div>
-            ))}
-          </div>
-        )}
+  const handleRevertTrade = async (tradeId: number) => {
+    try {
+      await revertTradeMutation.mutateAsync({ tradeId, revertedByUser: Number(user?.id) });
+      // Atualiza a lista após reverter
+      if (typeof refetchMyTrades === 'function') refetchMyTrades();
+    } catch (error) {
+      console.error('Erro ao reverter trade:', error);
+    }
+  };
 
-        {/* Actions */}
-        <div className="flex space-x-2 pt-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setSelectedTrade(selectedTrade === trade.id ? null : trade.id)}
-            className="flex-1"
-          >
-            <MessageSquare size={14} className="mr-1" />
-            Comentários ({trade.comments.length})
-          </Button>
-          
-          {trade.status === 'pending' && (
-            <>
-              <Button size="sm" className="bg-green-600 hover:bg-green-700">
-                Aceitar
-              </Button>
-              <Button size="sm" variant="destructive">
-                Rejeitar
-              </Button>
-            </>
-          )}
-          
-          {isAdmin && trade.status === 'accepted' && (
-            <Button size="sm" className="bg-nba-orange hover:bg-nba-orange/90">
-              Confirmar
-            </Button>
-          )}
-        </div>
+  const TradeCard = ({ trade }: { trade: any }) => {
+    // Identifica o participante do time logado
+    const myParticipant = trade.participants?.find((p: any) => p.team_id === teamId);
+    // Função para mostrar status amigável
+    const getResponseStatus = (status: string) => {
+      if (status === 'accepted') return <span className="text-green-700 font-semibold">Aceitou</span>;
+      if (status === 'rejected') return <span className="text-red-700 font-semibold">Rejeitou</span>;
+      return <span className="text-yellow-700 font-semibold">Pendente</span>;
+    };
 
-        {/* Comments Section */}
-        {selectedTrade === trade.id && (
-          <div className="border-t pt-4 space-y-3">
-            <h4 className="font-medium">Comentários:</h4>
-            {trade.comments.map((comment, index) => (
-              <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                <div className="flex justify-between items-start mb-1">
-                  <span className="font-medium text-sm">{comment.user}</span>
-                  <span className="text-xs text-gray-500">
-                    {new Date(comment.timestamp).toLocaleString('pt-BR')}
-                  </span>
-                </div>
-                <p className="text-sm">{comment.message}</p>
-              </div>
-            ))}
+    return (
+      <Card className="h-full">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between text-sm">
+            <span>Trade #{trade.id}</span>
+            <div className="flex items-center gap-2">
+              {getStatusBadge(trade.status)}
             
-            <div className="space-y-2">
-              <Textarea
-                placeholder="Adicionar comentário..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="min-h-[80px]"
-              />
-              <Button size="sm" className="w-full">
-                Comentar
-              </Button>
             </div>
+          </CardTitle>
+          <div className="text-xs text-gray-600 space-y-1">
+            <p>Proposto por {getTeamName(trade.created_by_team)}</p>
+            <p>Temporada {getSeasonName(trade.season_id)}</p>
+            <p>{new Date(trade.created_at).toLocaleDateString('pt-BR')}</p>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-3">
+          {/* Teams Involved */}
+          {/* <div className="flex items-center justify-center space-x-1 text-xs">
+            {trade.participants?.map((participant: any, index: number) => (
+              <React.Fragment key={participant.id}>
+                <span className="font-medium px-2 py-1 bg-nba-blue text-white rounded text-xs">
+                  {participant.team.abbreviation}
+                </span>
+                {index < (trade.participants?.length || 0) - 1 && <ArrowRight size={12} />}
+              </React.Fragment>
+            ))}
+          </div> */}
+
+          {/* Assets Summary */}
+          <div className="space-y-2">
+            {trade.participants?.map((participant: any) => (
+              <div key={participant.id} className="text-xs">
+                <div className="font-medium text-gray-700 mb-1">
+                  {participant.team.name} ({participant.team.abbreviation}) enviou:
+                </div>
+                {participant.assets?.map((asset: any, index: number) => (
+                  <div key={index} className="flex items-center ml-2 mb-1">
+                    {asset.asset_type === 'player' ? (
+                      <User size={10} className="mr-1 text-gray-500" />
+                    ) : (
+                      <Calendar size={10} className="mr-1 text-gray-500" />
+                    )}
+                                      <span className="text-xs">
+                    {asset.asset_type === 'player' 
+                      ? 
+                      
+                      `${asset.player?.name || 'Jogador'} → para ${asset.to_participant_team_abbreviation || '?'}`
+                      : (
+                          `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || '?'}) → para ${asset.to_participant_team_abbreviation || asset.to_team_abbreviation || '?'}`
+                      )
+                    }
+                  </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Status dos participantes */}
+          <div className="space-y-1 text-xs">
+            <div className="font-semibold mb-1">Status dos times:</div>
+            {trade.participants?.map((participant: any) => (
+              <div key={participant.id} className="flex items-center gap-2">
+                <span className="font-medium">{participant.team.abbreviation}</span>
+                {participant.is_initiator && (
+                  <span className="text-xs text-gray-500">(Iniciador)</span>
+                )}
+                <span>
+                  {getResponseStatus(participant.response_status)}
+                </span>
+              </div>
+            ))}
+            {isAdmin && trade.status === 'executed' && (
+          <div className="flex justify-end mt-4 mb-2">
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => handleRevertTrade(trade.id)}
+              disabled={revertTradeMutation.isPending}
+            >
+              {revertTradeMutation.isPending ? 'Revertendo...' : 'Reverter'}
+            </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
-  );
+          </div>
+
+          {/* Botões de ação para o time logado, se aplicável */}
+          {myParticipant &&
+            !myParticipant.is_initiator &&
+            !['accepted', 'rejected'].includes(myParticipant.response_status) &&
+            ['proposed', 'pending'].includes(trade.status) && (
+              <div className="flex flex-col space-y-2 pt-2">
+                <Button
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-xs"
+                  onClick={() => handleRespondToTrade(myParticipant.id, 'accepted')}
+                >
+                  Aceitar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="text-xs"
+                  onClick={() => handleRespondToTrade(myParticipant.id, 'rejected')}
+                >
+                  Rejeitar
+                </Button>
+              </div>
+            )}
+
+          {/* Execução automática - não precisa de botão */}
+        </CardContent>
+        
+      </Card>
+    );
+  };
 
   return (
     <div className="p-4 pb-20 space-y-6">
@@ -215,53 +254,89 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center">
           <CardContent className="p-3">
-            <p className="text-lg font-bold text-yellow-600">2</p>
-            <p className="text-xs text-gray-600">Pendentes</p>
+            <p className="text-lg font-bold text-blue-600">{myPendingTrades.length}</p>
+            <p className="text-xs text-gray-600">Minhas Pendentes</p>
           </CardContent>
         </Card>
         <Card className="text-center">
           <CardContent className="p-3">
-            <p className="text-lg font-bold text-green-600">5</p>
-            <p className="text-xs text-gray-600">Concluídos</p>
+            <p className="text-lg font-bold text-green-600">{myExecutedTrades.length}</p>
+            <p className="text-xs text-gray-600">Minhas Executadas</p>
           </CardContent>
         </Card>
-        <Card className="text-center">
+        {/* <Card className="text-center">
           <CardContent className="p-3">
-            <p className="text-lg font-bold text-blue-600">12</p>
-            <p className="text-xs text-gray-600">Totais</p>
+            <p className="text-lg font-bold text-blue-600">{myValidTrades.length}</p>
+            <p className="text-xs text-gray-600">Totais (meu time)</p>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* New Trade Button */}
-      <Button className="w-full bg-nba-blue hover:bg-nba-blue/90">
-        <Plus size={16} className="mr-2" />
-        Propor Nova Trade
-      </Button>
+      <TradeProposal teamId={teamId} isAdmin={isAdmin} onTradeCreated={refetchMyTrades} />
 
-      {/* Trades List */}
-      <div>
-        <h2 className="text-xl font-bold mb-4 text-nba-dark">Trades Recentes</h2>
-        {mockTrades.map(trade => (
-          <TradeCard key={trade.id} trade={trade} />
-        ))}
-      </div>
+      {/* Minhas Trades Executadas */}
+      {myExecutedTrades.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-nba-dark">Minhas Trades Executadas</h2>
+            <Button variant="ghost" size="icon" onClick={() => setShowMyExecuted(v => !v)}>
+              {showMyExecuted ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </Button>
+          </div>
+          {showMyExecuted && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myExecutedTrades.map(trade => (
+                <TradeCard key={trade.id} trade={trade} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Admin Section */}
-      {isAdmin && (
-        <Card className="border-2 border-dashed border-nba-orange">
-          <CardContent className="p-4 text-center">
-            <h3 className="font-semibold mb-2">Painel Admin</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm">
-                Todas as Trades
-              </Button>
-              <Button variant="outline" size="sm">
-                Histórico Completo
+      {/* Minhas Trades Pendentes */}
+      {myPendingTrades.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-nba-dark">Minhas Trades Pendentes</h2>
+            <div className="flex items-center gap-2">
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="text-sm">
+                  {pendingCount} 
+                </Badge>
+              )}
+              <Button variant="ghost" size="icon" onClick={() => setShowMyPending(v => !v)}>
+                {showMyPending ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          {showMyPending && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myPendingTrades.map(trade => (
+                <TradeCard key={trade.id} trade={trade} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Trades Executadas da Liga */}
+      {leagueExecutedTrades.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-nba-dark">Trades Executadas da Liga</h2>
+            <Button variant="ghost" size="icon" onClick={() => setShowLeagueExecuted(v => !v)}>
+              {showLeagueExecuted ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </Button>
+          </div>
+          {showLeagueExecuted && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {leagueExecutedTrades.map(trade => (
+                <TradeCard key={trade.id} trade={trade} />
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
