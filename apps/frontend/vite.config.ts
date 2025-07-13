@@ -17,10 +17,13 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-  ].filter(Boolean),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
+  },
+  build: {
+    outDir: "dist", // 👈 aqui está o que a Vercel precisa
   },
 }));
