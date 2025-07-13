@@ -5,7 +5,6 @@ dotenv.config();
 
 // String de conexão PostgreSQL do Supabase
 const connectionString = process.env['DATABASE_URL']
-  // 'postgresql://postgres.xopmhqakfombqptdmyqf:angtgiwDzoz0INNJ@aws-0-us-east-2.pooler.supabase.com:6543/postgres';
 
 // Configuração do pool de conexões
 const pool = new Pool({
