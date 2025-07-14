@@ -59,6 +59,14 @@ const startServer = async () => {
   }
 };
 
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API está funcionando',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Tratamento de erros não capturados
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);

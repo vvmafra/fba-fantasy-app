@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { TeamController } from '../controllers/TeamController';
+import { TeamController } from '../controllers/TeamController.js';
 import { authenticateToken, authenticateAndRequireTeamOwnership, authenticateAndRequireTeamEditPermission } from '../middlewares/auth.js';
 
 const router = Router();
