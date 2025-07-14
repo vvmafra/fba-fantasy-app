@@ -5,6 +5,7 @@ const urlsToCache = [
   '/logo.png',
   '/favicon.ico',
   '/favicon2.ico',
+  '/logo-red.png',
 ];
 
 // Instalação do Service Worker
