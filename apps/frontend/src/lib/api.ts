@@ -1,9 +1,12 @@
 import axios from 'axios';
-// import { config } from './config';
+import { config } from './config';
+
+console.log("oi")
+console.log('API URL em uso:', config.apiUrl);
 
 // Configuração base do cliente HTTP
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: config.apiUrl,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
