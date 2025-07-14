@@ -12,5 +12,5 @@ export const config = {
   version: '1.0.0',
   
   // Default team ID (temporário - será substituído por autenticação)
-  defaultTeamId: 1,
+  // defaultTeamId: 1,
 } as const; 
