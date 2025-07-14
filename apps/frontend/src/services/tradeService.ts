@@ -147,4 +147,8 @@ export const tradeService = {
   // Contar trades do usuário autenticado
   countMyTrades: (teamId: number) =>
     apiRequest.get<number>(`/trades/my-trades/count`, { team_id: teamId }),
+
+  // Cancelar trade
+  cancelTrade: (tradeId: number, created_by_team: number) =>
+    apiRequest.delete(`/trades/${tradeId}/cancel?created_by_team=${created_by_team}`),
 }; 

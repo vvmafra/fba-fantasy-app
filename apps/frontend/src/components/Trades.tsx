@@ -10,6 +10,8 @@ import { useSeasonsFromActive } from '@/hooks/useSeasons';
 import { TradeWithDetails } from '@/services/tradeService';
 import TradeProposal from './forms/tradeProposal';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMutation } from '@tanstack/react-query';
+import { tradeService } from '@/services/tradeService';
 
 interface TradesProps {
   isAdmin: boolean;
@@ -23,6 +25,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const [showMyExecuted, setShowMyExecuted] = useState(true);
   const [showMyPending, setShowMyPending] = useState(true);
   const [showLeagueExecuted, setShowLeagueExecuted] = useState(true);
+  const [cancelingTradeId, setCancelingTradeId] = useState<number | null>(null);
 
   
 
@@ -36,6 +39,9 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const updateResponseMutation = useUpdateTradeResponse();
   const executeTradeMutation = useExecuteTrade();
   const revertTradeMutation = useRevertTrade();
+  const cancelTradeMutation = useMutation({
+    mutationFn: (tradeId: number) => tradeService.cancelTrade(tradeId)
+  });
   const { user } = useAuth();
 
   // Separar trades por categoria
@@ -81,7 +87,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
 
   const getSeasonName = (seasonId: number) => {
     const season = seasonsData?.data?.find(season => season.id === seasonId);
-    // if (!season) return `Temporada ${seasonId}`;
+    if (!season) return `Temporada ${seasonId}`; // fallback seguro
     return `${season.season_number} (${season.year})`;
   };
 
@@ -116,6 +122,19 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
       if (typeof refetchMyTrades === 'function') refetchMyTrades();
     } catch (error) {
       console.error('Erro ao reverter trade:', error);
+    }
+  };
+
+  const handleCancelTrade = async (tradeId: number) => {
+    try {
+      console.log('cancelando trade: ', tradeId);
+      setCancelingTradeId(tradeId);
+      await cancelTradeMutation.mutateAsync(tradeId);
+      if (typeof refetchMyTrades === 'function') refetchMyTrades();
+    } catch (error) {
+      console.error('Erro ao cancelar trade:', error);
+    } finally {
+      setCancelingTradeId(null);
     }
   };
 
@@ -166,25 +185,30 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                 <div className="font-medium text-gray-700 mb-1">
                   {participant.team.name} ({participant.team.abbreviation}) enviou:
                 </div>
-                {participant.assets?.map((asset: any, index: number) => (
-                  <div key={index} className="flex items-center ml-2 mb-1">
-                    {asset.asset_type === 'player' ? (
-                      <User size={10} className="mr-1 text-gray-500" />
-                    ) : (
-                      <Calendar size={10} className="mr-1 text-gray-500" />
-                    )}
-                                      <span className="text-xs">
-                    {asset.asset_type === 'player' 
-                      ? 
-                      
-                      `${asset.player?.name || 'Jogador'} → para ${asset.to_participant_team_abbreviation || '?'}`
-                      : (
-                          `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || '?'}) → para ${asset.to_participant_team_abbreviation || asset.to_team_abbreviation || '?'}`
-                      )
-                    }
-                  </span>
-                  </div>
-                ))}
+                {participant.assets?.map((asset: any, index: number) => {
+                  // Lógica para mostrar o destino correto em trades de 2 times
+                  let destinoAbbreviation = asset.to_participant_team_abbreviation;
+                  if (trade.participants?.length === 2) {
+                    // Pega o outro participante
+                    const outroParticipante = trade.participants.find((p: any) => p.id !== participant.id);
+                    destinoAbbreviation = outroParticipante?.team?.abbreviation || '?';
+                  }
+                  return (
+                    <div key={index} className="flex items-center ml-2 mb-1">
+                      {asset.asset_type === 'player' ? (
+                        <User size={10} className="mr-1 text-gray-500" />
+                      ) : (
+                        <Calendar size={10} className="mr-1 text-gray-500" />
+                      )}
+                      <span className="text-xs">
+                        {asset.asset_type === 'player'
+                          ? `${asset.player?.name || 'Jogador'} → para ${destinoAbbreviation}`
+                          : `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || '?'}) → para ${destinoAbbreviation}`
+                        }
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -237,6 +261,23 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                   onClick={() => handleRespondToTrade(myParticipant.id, 'rejected')}
                 >
                   Rejeitar
+                </Button>
+              </div>
+            )}
+
+          {/* Botão de cancelar para o iniciador */}
+          {myParticipant &&
+            myParticipant.is_initiator &&
+            ['proposed', 'pending'].includes(trade.status) && (
+              <div className="flex flex-col space-y-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="text-xs"
+                  onClick={() => handleCancelTrade(trade.id)}
+                  disabled={cancelingTradeId === trade.id}
+                >
+                  {cancelingTradeId === trade.id ? 'Cancelando...' : 'Cancelar'}
                 </Button>
               </div>
             )}

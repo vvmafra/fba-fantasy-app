@@ -964,4 +964,32 @@ export class TradeService {
 
     return Number(rows[0]?.count || 0);
   }
+
+  // Cancelar trade (apenas se não executada)
+  static async cancelTrade(tradeId: number): Promise<void> {
+    const client = await pool.connect();
+    try {
+      console.log('cancelando trade', tradeId);
+      await client.query('BEGIN');
+      // Verifica status
+      const tradeResult = await client.query('SELECT status FROM trades WHERE id = $1', [tradeId]);
+      if (tradeResult.rows.length === 0) throw new Error('Trade não encontrada');
+      const status = tradeResult.rows[0].status;
+      if (status !== 'proposed' && status !== 'pending') {
+        throw new Error('Só é possível cancelar trades que não foram executadas ou rejeitadas');
+      }
+      // Deleta assets
+      await client.query('DELETE FROM trade_assets WHERE participant_id IN (SELECT id FROM trade_participants WHERE trade_id = $1)', [tradeId]);
+      // Deleta participantes
+      await client.query('DELETE FROM trade_participants WHERE trade_id = $1', [tradeId]);
+      // Deleta trade
+      await client.query('DELETE FROM trades WHERE id = $1', [tradeId]);
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 } 

@@ -17,6 +17,8 @@ import TeamIndexRedirect from "@/components/TeamIndexRedirect";
 import Wall from "./components/Wall";
 import WallPage from "./pages/WallPage";
 import TeamViewPage from "./pages/TeamViewPage";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
+import { OfflineIndicator } from "./components/OfflineIndicator";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +65,10 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
+      
+      {/* Componentes PWA */}
+      <PWAInstallPrompt />
+      <OfflineIndicator />
     </TooltipProvider>
   </QueryClientProvider>
 );

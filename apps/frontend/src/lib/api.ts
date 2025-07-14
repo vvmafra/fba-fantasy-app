@@ -1,9 +1,6 @@
 import axios from 'axios';
 import { config } from './config';
 
-console.log("oi")
-console.log('API URL em uso:', config.apiUrl);
-
 // Configuração base do cliente HTTP
 export const apiClient = axios.create({
   baseURL: config.apiUrl,

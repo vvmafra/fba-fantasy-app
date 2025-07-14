@@ -67,4 +67,7 @@ router.post(
   TradeController.revertTrade
 );
 
+// DELETE /api/v1/trades/:id/cancel - Cancelar trade (iniciador ou admin)
+router.delete('/:id/cancel', requireTradeCreationPermission, TradeController.cancelTrade);
+
 export default router; 

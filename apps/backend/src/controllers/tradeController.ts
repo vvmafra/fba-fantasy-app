@@ -178,4 +178,15 @@ export class TradeController {
     const count = await TradeService.countMyTrades(Number(team_id));
     res.status(200).json({ success: true, data: count });
   });
+
+  // CANCELAR trade (iniciador ou admin)
+  static cancelTrade = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
+      res.status(400).json({ success: false, message: 'ID da trade é obrigatório' });
+      return;
+    }
+    await TradeService.cancelTrade(Number(id));
+    res.status(200).json({ success: true, message: 'Trade cancelada com sucesso' });
+  });
 } 
