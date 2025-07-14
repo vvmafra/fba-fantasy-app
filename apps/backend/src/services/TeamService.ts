@@ -1,4 +1,4 @@
-import pool from '../utils/postgresClient';
+import pool from '../utils/postgresClient.js';
 import { Team, CreateTeamRequest, UpdateTeamRequest } from '../types';
 
 export class TeamService {
