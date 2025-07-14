@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { AuthService } from '@/services/AuthService.js';
-import { asyncHandler } from '@/middlewares/errorHandler.js';
+import { AuthService } from '../services/AuthService.js';
+import { asyncHandler } from '../middlewares/errorHandler.js';
 
 export class AuthController {
   static googleLogin = asyncHandler(async (req: Request, res: Response) => {

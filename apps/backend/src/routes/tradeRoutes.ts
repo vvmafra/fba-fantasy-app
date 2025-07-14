@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { TradeController } from '@/controllers/tradeController.js';
-import { validate, validateWithParams } from '@/middlewares/validation.js';
+import { TradeController } from '../controllers/tradeController.js';
+import { validate, validateWithParams } from '../middlewares/validation.js';
 import { 
   createTradeSchema, 
   updateTradeParticipantSchema, 
@@ -9,13 +9,13 @@ import {
   tradeQuerySchema,
   executeTradeSchema,
   revertTradeSchema
-} from '@/validations/tradeValidation.js';
-import { authenticateToken, authenticateAndRequireAdmin } from '@/middlewares/auth.js';
+} from '../validations/tradeValidation.js';
+import { authenticateToken, authenticateAndRequireAdmin } from '../middlewares/auth.js';
 import { 
   requireTradeCreationPermission, 
   requireTradeResponsePermission, 
   requireTradeViewPermission 
-} from '@/middlewares/tradeAuth.js';
+} from '../middlewares/tradeAuth.js';
 
 const router = Router();
 

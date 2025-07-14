@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { RosterController } from '@/controllers/rosterController.js';
-import { validate, validateWithParams } from '@/middlewares/validation.js';
-import { authenticateAndRequireAdmin } from '@/middlewares/auth.js';
+import { RosterController } from '../controllers/rosterController.js';
+import { validate, validateWithParams } from '../middlewares/validation.js';
+import { authenticateAndRequireAdmin } from '../middlewares/auth.js';
 import { 
   createRosterSeasonSchema, 
   updateRosterSeasonSchema, 
   rosterQuerySchema,
   rosterIdSchema
-} from '@/validations/rosterValidation.js';
+} from '../validations/rosterValidation.js';
 
 const router = Router();
 

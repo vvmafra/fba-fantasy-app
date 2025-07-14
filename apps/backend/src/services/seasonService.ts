@@ -1,4 +1,4 @@
-import pool from '@/utils/postgresClient.js';
+import pool from '../utils/postgresClient.js';
 
 export class SeasonService {
   static async getAllSeasons(){

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { DeadlineService } from '../services/deadlineService.js';
-import { asyncHandler } from '@/middlewares/errorHandler.js';
+import { asyncHandler } from '../middlewares/errorHandler.js';
 
 export class DeadlineController {
   // GET /api/v1/deadlines - Listar todos os deadlines

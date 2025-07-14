@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { RosterPlayoffsController } from '@/controllers/rosterPlayoffsController.js';
-import { validate, validateWithParams } from '@/middlewares/validation.js';
-import { authenticateAndRequireAdmin } from '@/middlewares/auth.js';
+import { RosterPlayoffsController } from '../controllers/rosterPlayoffsController.js';
+import { validate, validateWithParams } from '../middlewares/validation.js';
+import { authenticateAndRequireAdmin } from '../middlewares/auth.js';
 import { 
   createRosterPlayoffsSchema, 
   updateRosterPlayoffsSchema, 
   rosterPlayoffsQuerySchema,
   rosterPlayoffsIdSchema
-} from '@/validations/rosterPlayoffsValidation.js';
+} from '../validations/rosterPlayoffsValidation.js';
 
 const router = Router();
 

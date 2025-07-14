@@ -1,5 +1,5 @@
-import pool from '@/utils/postgresClient.js';
-import { Deadline, CreateDeadlineRequest, UpdateDeadlineRequest } from '@/types';
+import pool from '../utils/postgresClient.js';
+import { Deadline, CreateDeadlineRequest, UpdateDeadlineRequest } from '../types';
 
 export class DeadlineService {
   // Buscar todos os deadlines

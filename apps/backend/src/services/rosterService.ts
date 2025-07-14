@@ -1,4 +1,4 @@
-import pool from '@/utils/postgresClient.js';
+import pool from '../utils/postgresClient.js';
 import { 
   RosterSeason, 
   CreateRosterSeasonRequest, 
@@ -6,8 +6,8 @@ import {
   PaginationParams, 
   PaginatedResponse,
   RosterQueryParams
-} from '@/types';
-import { createError } from '@/middlewares/errorHandler.js';
+} from '../types';
+import { createError } from '../middlewares/errorHandler.js';
 
 export class RosterService {
   // Verificar se o cliente PostgreSQL está inicializado

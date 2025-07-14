@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { SeasonService } from '../services/seasonService.js';
-import { asyncHandler } from '@/middlewares/errorHandler.js';
-import pool from '@/utils/postgresClient.js';
+import { asyncHandler } from '../middlewares/errorHandler.js';
+import pool from '../utils/postgresClient.js';
 
 export class SeasonController {
   // GET /api/v1/seasons - Listar todas as seasons

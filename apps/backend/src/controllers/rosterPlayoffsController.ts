@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { RosterPlayoffsService } from '@/services/rosterPlayoffsService.js';
-import { asyncHandler } from '@/middlewares/errorHandler.js';
-import { RosterPlayoffsQueryParams } from '@/types';
-import pool from '@/utils/postgresClient.js';
+import { RosterPlayoffsService } from '../services/rosterPlayoffsService.js';
+import { asyncHandler } from '../middlewares/errorHandler.js';
+import { RosterPlayoffsQueryParams } from '../types';
+import pool from '../utils/postgresClient.js';
 
 export class RosterPlayoffsController {
   // GET /api/v1/roster-playoffs/test - Teste de conexão

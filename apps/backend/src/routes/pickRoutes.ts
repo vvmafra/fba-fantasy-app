@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { PickController } from '@/controllers/pickController.js';
+import { PickController } from '../controllers/pickController.js';
 
 const router = Router();
 

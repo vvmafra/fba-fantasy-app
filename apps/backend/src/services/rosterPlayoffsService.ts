@@ -1,12 +1,12 @@
-import pool from '@/utils/postgresClient.js';
+import pool from '../utils/postgresClient.js';
 import { 
   RosterPlayoffs, 
   CreateRosterPlayoffsRequest, 
   UpdateRosterPlayoffsRequest, 
   RosterPlayoffsQueryParams,
   PaginatedResponse 
-} from '@/types';
-import { createError } from '@/middlewares/errorHandler.js';
+} from '../types';
+import { createError } from '../middlewares/errorHandler.js';
 
 export class RosterPlayoffsService {
   private static checkPostgresClient() {
