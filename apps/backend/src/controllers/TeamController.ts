@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { TeamService } from '../services/TeamService';
-import { CreateTeamRequest, UpdateTeamRequest } from '../types';
+import { TeamService } from '@/services/TeamService.js';
+import type { CreateTeamRequest, UpdateTeamRequest } from '@/types';
 
 export class TeamController {
   // GET /api/v1/teams - Listar todos os times

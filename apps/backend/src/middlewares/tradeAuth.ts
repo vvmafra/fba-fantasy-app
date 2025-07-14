@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import pool from '../utils/postgresClient';
+import pool from '@/utils/postgresClient.js';
 
 // Middleware para verificar se o usuário pode criar trades para um time
 export const requireTradeCreationPermission = async (req: Request, res: Response, next: NextFunction) => {

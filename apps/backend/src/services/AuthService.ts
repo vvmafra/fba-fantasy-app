@@ -1,7 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import pool from '@/utils/postgresClient';
-import { createError } from '@/middlewares/errorHandler';
+import pool from '@/utils/postgresClient.js';
+import { createError } from '@/middlewares/errorHandler.js';
 
 export interface GoogleUser {
   id: string;

@@ -1,4 +1,4 @@
-import pool from '@/utils/postgresClient';
+import pool from '@/utils/postgresClient.js';
 import { 
   Player, 
   CreatePlayerRequest, 
@@ -11,7 +11,7 @@ import {
   OCRRequest,
   OCRResponse
 } from '@/types';
-import { createError } from '@/middlewares/errorHandler';
+import { createError } from '@/middlewares/errorHandler.js';
 
 export class PlayerService {
   // Verificar se o cliente PostgreSQL está inicializado

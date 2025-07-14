@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import playerRoutes from './playerRoutes';
-import teamRoutes from './teamRoutes';
-import authRoutes from './authRoutes';
-import seasonRoutes from './seasonRoutes';
-import pickRoutes from './pickRoutes';
-import rosterRoutes from './rosterRoutes';
-import rosterPlayoffsRoutes from './rosterPlayoffsRoutes';
-import deadlineRoutes from './deadlineRoutes';
-import tradeRoutes from './tradeRoutes';
+import playerRoutes from './playerRoutes.js';
+import teamRoutes from './teamRoutes.js';
+import authRoutes from './authRoutes.js';
+import seasonRoutes from './seasonRoutes.js';
+import pickRoutes from './pickRoutes.js';
+import rosterRoutes from './rosterRoutes.js';
+import rosterPlayoffsRoutes from './rosterPlayoffsRoutes.js';
+import deadlineRoutes from './deadlineRoutes.js';
+import tradeRoutes from './tradeRoutes.js';
 
 const router = Router();
 

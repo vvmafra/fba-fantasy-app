@@ -1,4 +1,4 @@
-import pool from '@/utils/postgresClient';
+import pool from '@/utils/postgresClient.js';
 
 export class PickService {
   static async getAllPicks() {

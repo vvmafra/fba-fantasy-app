@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { RosterService } from '@/services/rosterService';
-import { asyncHandler } from '@/middlewares/errorHandler';
+import { RosterService } from '@/services/rosterService.js';
+import { asyncHandler } from '@/middlewares/errorHandler.js';
 import { RosterQueryParams } from '@/types';
-import pool from '@/utils/postgresClient';
+import pool from '@/utils/postgresClient.js';
 
 export class RosterController {
   // GET /api/v1/roster/test - Teste de conexão

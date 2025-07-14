@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { PlayerController } from '@/controllers/playerController';
-import { validate, validateWithParams } from '@/middlewares/validation';
-import { authenticateAndRequireAdmin, authenticateAndRequirePlayerTeamOwnership } from '@/middlewares/auth';
+import { PlayerController } from '@/controllers/playerController.js';
+import { validate, validateWithParams } from '@/middlewares/validation.js';
+import { authenticateAndRequireAdmin, authenticateAndRequirePlayerTeamOwnership } from '@/middlewares/auth.js';
 import { 
   createPlayerSchema, 
   updatePlayerSchema, 
@@ -10,7 +10,7 @@ import {
   ocrRequestSchema,
   transferPlayerSchema,
   batchUpdateSchema
-} from '@/validations/playerValidation';
+} from '@/validations/playerValidation.js';
 
 const router = Router();
 

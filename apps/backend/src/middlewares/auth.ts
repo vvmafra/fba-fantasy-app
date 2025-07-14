@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import pool from '../utils/postgresClient';
+import pool from '../utils/postgresClient.js';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = (req.headers as any).authorization;

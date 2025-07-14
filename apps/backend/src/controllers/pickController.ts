@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { PickService } from '@/services/pickService';
-import { asyncHandler } from '@/middlewares/errorHandler';
-import pool from '@/utils/postgresClient';
+import { PickService } from '@/services/pickService.js';
+import { asyncHandler } from '@/middlewares/errorHandler.js';
+import pool from '@/utils/postgresClient.js';
 
 export class PickController {
   // GET /api/v1/picks - Listar todos os picks

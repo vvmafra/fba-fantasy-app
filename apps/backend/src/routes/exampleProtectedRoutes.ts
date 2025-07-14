@@ -6,7 +6,7 @@ import {
   authenticateAndRequirePlayerTeamOwnership,
   authenticateAndRequireAnyTeam,
   authenticateAndRequireTeamEditPermission
-} from '../middlewares/auth';
+} from '../middlewares/auth.js';
 
 const router = Router();
 

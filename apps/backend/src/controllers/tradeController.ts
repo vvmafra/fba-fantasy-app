@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import asyncHandler from 'express-async-handler';
-import { TradeService } from '../services/tradeService';
+import { TradeService } from '@/services/tradeService.js';
 import { 
   CreateTradeRequest, 
   UpdateTradeParticipantRequest,

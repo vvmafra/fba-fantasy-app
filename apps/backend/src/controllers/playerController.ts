@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { PlayerService } from '@/services/playerService';
-import { asyncHandler } from '@/middlewares/errorHandler';
+import { PlayerService } from '@/services/playerService.js';
+import { asyncHandler } from '@/middlewares/errorHandler.js';
 import { PlayerQueryParams, BatchUpdateRequest, TransferPlayerRequest, OCRRequest } from '@/types';
-import pool from '@/utils/postgresClient';
+import pool from '@/utils/postgresClient.js';
 
 export class PlayerController {
   // GET /api/v1/players/test - Teste de conexão
