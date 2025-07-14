@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { RosterController } from '@/controllers/RosterController';
+import { RosterController } from '@/controllers/rosterController';
 import { validate, validateWithParams } from '@/middlewares/validation';
 import { authenticateAndRequireAdmin } from '@/middlewares/auth';
 import { 

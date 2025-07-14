@@ -148,11 +148,11 @@ export class RosterController {
   static updateRoster = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id) {
-      res.status(400).json({ success: false, message: 'ID é obrigatório' });
+      return res.status(400).json({ success: false, message: 'ID é obrigatório' });
     }
     const roster = await RosterService.updateRoster(Number(id), req.body);
     
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: roster,
       message: 'Roster atualizado com sucesso'
@@ -168,7 +168,7 @@ export class RosterController {
     
     await RosterService.deleteRoster(Number(id));
     
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Roster deletado com sucesso'
     });

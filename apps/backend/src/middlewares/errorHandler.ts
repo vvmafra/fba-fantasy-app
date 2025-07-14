@@ -41,11 +41,11 @@ export const errorHandler = (
 
   // Erro genérico
   const statusCode = 500;
-  const message = process.env.NODE_ENV === 'production' 
+  const message = process.env['NODE_ENV'] === 'production' 
     ? 'Erro interno do servidor' 
     : error.message;
 
-  res.status(statusCode).json({
+  return res.status(statusCode).json({
     success: false,
     error: message
   });

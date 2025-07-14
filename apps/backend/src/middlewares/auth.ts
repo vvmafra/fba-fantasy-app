@@ -103,7 +103,7 @@ export const requireTeamOwnership = async (req: Request, res: Response, next: Ne
       });
     }
 
-    next();
+    return next();
   } catch (error) {
     console.error('Erro no middleware requireTeamOwnership:', error);
     return res.status(500).json({ 
@@ -128,14 +128,14 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
     const playerId = parseInt(req.params['id'] || '0');
     
     if (!user) {
-      res.status(401).json({ 
+      return res.status(401).json({ 
         success: false, 
         message: 'Usuário não autenticado' 
       });
     }
 
     if (!playerId || playerId === 0) {
-      res.status(400).json({ 
+      return res.status(400).json({ 
         success: false, 
         message: 'ID do player é obrigatório' 
       });
@@ -145,7 +145,7 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
     const { rows } = await pool.query('SELECT team_id FROM players WHERE id = $1', [playerId]);
     
     if (rows.length === 0) {
-      res.status(404).json({ 
+      return res.status(404).json({ 
         success: false, 
         message: 'Player não encontrado' 
       });
@@ -155,7 +155,7 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
     
     // Se o player não tem time (é free agent), não permitir operações
     if (!playerTeamId) {
-      res.status(403).json({ 
+      return res.status(403).json({ 
         success: false, 
         message: 'Player é Free Agent e não pode ser modificado desta forma.' 
       });
@@ -165,7 +165,7 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
     const { rows: teamRows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [playerTeamId]);
     
     if (teamRows.length === 0) {
-      res.status(404).json({ 
+      return res.status(404).json({ 
         success: false, 
         message: 'Time do player não encontrado' 
       });
@@ -176,16 +176,16 @@ export const requirePlayerTeamOwnership = async (req: Request, res: Response, ne
 
     // Verificar se o usuário é o dono do time que possui o player
     if (teamOwnerId !== userId) {
-      res.status(403).json({ 
+      return res.status(403).json({ 
         success: false, 
         message: 'Acesso negado. Apenas o dono do time pode realizar esta ação.' 
       });
     }
 
-    next();
+    return next();
   } catch (error) {
     console.error('Erro no middleware requirePlayerTeamOwnership:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       success: false, 
       message: 'Erro interno do servidor' 
     });
@@ -225,7 +225,7 @@ export const requireAnyTeamOwnership = async (req: Request, res: Response, next:
       });
     }
 
-    next();
+    return next();
   } catch (error) {
     console.error('Erro no middleware requireAnyTeamOwnership:', error);
     return res.status(500).json({ 

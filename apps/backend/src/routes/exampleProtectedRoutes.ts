@@ -74,6 +74,7 @@ router.post('/teams/:id/players',
   (req, res, next) => {
     // Middleware customizado adicional 
     next();
+    return;
   },
   (req, res) => {
     res.json({ message: 'Player adicionado ao time' });
@@ -93,6 +94,7 @@ router.post('/teams/:id/players/:playerId/assign',
       });
     }
     next();
+    return;
   },
   (req, res) => {
     res.json({ message: 'Player atribuído à posição' });
