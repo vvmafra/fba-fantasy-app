@@ -30,6 +30,15 @@ app.use(express.urlencoded({ extended: true }));
 // Rotas da API
 app.use(API_PREFIX, routes);
 
+// Health check deve vir ANTES do notFound e errorHandler!
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API está funcionando',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Middleware para rotas não encontradas
 app.use(notFound);
 
@@ -58,14 +67,6 @@ const startServer = async () => {
     process.exit(1);
   }
 };
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API está funcionando',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // Tratamento de erros não capturados
 process.on('unhandledRejection', (reason, promise) => {
