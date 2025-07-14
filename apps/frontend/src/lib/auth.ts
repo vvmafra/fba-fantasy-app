@@ -4,11 +4,11 @@ export const AUTH_CONFIG = {
   GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || "SEU_CLIENT_ID_AQUI",
   
   // URL do backend
-  BACKEND_URL: import.meta.env.VITE_BACKEND_URL || "http://localhost:3001",
+  BACKEND_URL: import.meta.env.VITE_API_URL || "http://localhost:3001",
   
   // Endpoints de autenticação
   ENDPOINTS: {
-    GOOGLE_LOGIN: "/api/v1/auth/google-login",
+    GOOGLE_LOGIN: "/auth/google-login",
   }
 };
 
