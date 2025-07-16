@@ -47,4 +47,16 @@ export const seasonService = {
   // Deletar temporada
   deleteSeason: (id: number) =>
     apiRequest.delete<void>(`/seasons/${id}`),
+
+  // Avançar para próxima temporada
+  advanceToNextSeason: () =>
+    apiRequest.post<Season>('/seasons/advance-next'),
+
+  // Voltar para temporada anterior
+  goBackToPreviousSeason: () =>
+    apiRequest.post<Season>('/seasons/go-back'),
+
+  // Alterar temporada ativa
+  changeActiveSeason: (seasonId: number) =>
+    apiRequest.post<Season>(`/seasons/${seasonId}/activate`),
 }; 

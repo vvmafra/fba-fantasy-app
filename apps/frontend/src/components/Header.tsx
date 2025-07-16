@@ -4,6 +4,7 @@ import { Bell, Settings, Crown, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import AdminMenu from './AdminMenu';
 
 interface HeaderProps {
   userTeam: string;
@@ -62,9 +63,11 @@ const Header = ({ userTeam, userTeamOwner, isAdmin, notifications, userTeamLogo 
               </Badge>
             )}
           </Button> */}
-          <Button variant="ghost" size="sm">
-            <Settings size={20} />
-          </Button>
+          <AdminMenu>
+            <Button variant="ghost" size="sm">
+              <Settings size={20} />
+            </Button>
+          </AdminMenu>
         </div>
       </div>
     </header>

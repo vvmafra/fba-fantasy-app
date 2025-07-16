@@ -16,6 +16,10 @@ export interface RosterSeason {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
   created_at: string;
 }
 
@@ -33,6 +37,10 @@ export interface CreateRosterSeasonRequest {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
 }
 
 export interface UpdateRosterSeasonRequest extends Partial<CreateRosterSeasonRequest> {
@@ -73,6 +81,10 @@ export const rosterService = {
   // Buscar roster da temporada ativa
   getActiveSeasonRoster: () =>
     apiRequest.get<RosterSeason>('/roster/active'),
+
+  // Buscar todos os rosters com detalhes
+  getAllRostersWithDetails: (params?: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) =>
+    apiRequest.get<any[]>('/roster/with-details', params),
 
   // Buscar roster por time e temporada
   getRosterByTeamAndSeason: async (teamId: number, seasonId: number): Promise<RosterSeason | null> => {

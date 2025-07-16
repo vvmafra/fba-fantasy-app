@@ -169,6 +169,10 @@ export interface RosterSeason {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
   created_at: string;
 }
 
@@ -186,6 +190,10 @@ export interface CreateRosterSeasonRequest {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
 }
 
 export interface UpdateRosterSeasonRequest extends Partial<CreateRosterSeasonRequest> {
@@ -217,6 +225,10 @@ export interface RosterPlayoffs {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
   created_at: string;
 }
 
@@ -232,6 +244,10 @@ export interface CreateRosterPlayoffsRequest {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
 }
 
 export interface UpdateRosterPlayoffsRequest extends Partial<CreateRosterPlayoffsRequest> {
@@ -378,4 +394,51 @@ export interface ExecuteTradeRequest {
 
 export interface RevertTradeRequest {
   reverted_by_user: number;
+}
+
+// Tipos para Users
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+}
+
+export interface CreateUserRequest {
+  name: string;
+  email: string;
+  role?: 'admin' | 'user';
+}
+
+export interface UpdateUserRequest extends Partial<CreateUserRequest> {
+  id: number;
+}
+
+export interface UserFilters {
+  name?: string;
+  email?: string;
+  role?: 'admin' | 'user';
+}
+
+export interface UserQueryParams extends PaginationParams, UserFilters {} 
+
+// Tipos para LeagueCap
+export interface LeagueCap {
+  id: number;
+  season_id: number;
+  min_cap: number;
+  max_cap: number;
+  avg_cap: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CreateLeagueCapRequest {
+  season_id: number;
+  min_cap: number;
+  max_cap: number;
+}
+
+export interface UpdateLeagueCapRequest extends Partial<CreateLeagueCapRequest> {
+  is_active?: boolean;
 } 

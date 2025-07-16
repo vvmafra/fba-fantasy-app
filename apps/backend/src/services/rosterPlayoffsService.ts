@@ -198,15 +198,20 @@ export class RosterPlayoffsService {
         rosterData.game_style,
         rosterData.franchise_player_id,
         rosterData.offense_style,
-        rosterData.defense_style
+        rosterData.defense_style,
+        rosterData.offensive_tempo,
+        rosterData.offensive_rebounding,
+        rosterData.defensive_aggression,
+        rosterData.defensive_rebounding
       ];
 
       const { rows } = await pool.query(
         `INSERT INTO roster_playoffs (
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           total_players_rotation, age_preference, game_style, franchise_player_id, 
-          offense_style, defense_style
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+          offense_style, defense_style, offensive_tempo, offensive_rebounding, 
+          defensive_aggression, defensive_rebounding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
         values
       );
 
@@ -280,6 +285,26 @@ export class RosterPlayoffsService {
         paramCount++;
         updates.push(`defense_style = $${paramCount}`);
         values.push(rosterData.defense_style);
+      }
+      if (rosterData.offensive_tempo !== undefined) {
+        paramCount++;
+        updates.push(`offensive_tempo = $${paramCount}`);
+        values.push(rosterData.offensive_tempo);
+      }
+      if (rosterData.offensive_rebounding !== undefined) {
+        paramCount++;
+        updates.push(`offensive_rebounding = $${paramCount}`);
+        values.push(rosterData.offensive_rebounding);
+      }
+      if (rosterData.defensive_aggression !== undefined) {
+        paramCount++;
+        updates.push(`defensive_aggression = $${paramCount}`);
+        values.push(rosterData.defensive_aggression);
+      }
+      if (rosterData.defensive_rebounding !== undefined) {
+        paramCount++;
+        updates.push(`defensive_rebounding = $${paramCount}`);
+        values.push(rosterData.defensive_rebounding);
       }
 
       if (updates.length === 0) {

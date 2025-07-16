@@ -128,6 +128,34 @@ export class RosterController {
     }
   });
 
+  // GET /api/v1/roster/with-details - Buscar todos os rosters com detalhes
+  static getAllRostersWithDetails = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const params: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {
+        sortBy: req.query['sortBy'] as string || 'created_at',
+        sortOrder: (req.query['sortOrder'] as 'asc' | 'desc') || 'desc'
+      };
+
+      if (req.query['season_id']) {
+        params.season_id = Number(req.query['season_id']);
+      }
+
+      const rosters = await RosterService.getAllRostersWithDetails(params);
+      
+      return res.status(200).json({
+        success: true,
+        data: rosters
+      });
+    } catch (error) {
+      console.error('💥 Erro no controller:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
   // POST /api/v1/roster - Criar novo roster
   static createRoster = asyncHandler(async (req: Request, res: Response) => {
     const adminUser = (req as any).user; // Admin que fez a requisição

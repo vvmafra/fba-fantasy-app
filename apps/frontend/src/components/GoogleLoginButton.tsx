@@ -40,8 +40,6 @@ const GoogleLoginButton = () => {
     const idToken = response.credential;
 
     // Enviar para seu backend validar e autenticar o usuário
-    console.log('backend url: ', AUTH_CONFIG.BACKEND_URL);
-    console.log('google login endpoint: ', AUTH_CONFIG.ENDPOINTS.GOOGLE_LOGIN);
     fetch(`${AUTH_CONFIG.BACKEND_URL}${AUTH_CONFIG.ENDPOINTS.GOOGLE_LOGIN}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

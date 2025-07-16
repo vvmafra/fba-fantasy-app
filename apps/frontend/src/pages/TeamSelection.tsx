@@ -5,27 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import { useMyTeams } from '@/hooks/useTeams';
 import { teamService } from '@/services/teamService';
-
-function setUserTeamId(teamId: string | number, teamData: any) {
-  const userStr = localStorage.getItem('user');
-  if (userStr) {
-    const user = JSON.parse(userStr);
-    user.teamId = teamId;
-    user.teamData = teamData; // Armazenar dados do time selecionado
-    localStorage.setItem('user', JSON.stringify(user));
-    
-    // Disparar evento customizado para notificar mudanças
-    window.dispatchEvent(new CustomEvent('userTeamChanged', { detail: { user } }));
-  }
-}
+import { useAuth } from '@/contexts/AuthContext';
 
 const TeamSelection = () => {
   // Mock data - será substituído por dados reais do usuário
   const { data: userTeams, isLoading, error } = useMyTeams();
+  const { updateUserTeam } = useAuth();
 
   useEffect(() => {
     teamService.getMyTeams()
   }, []);
+
+  const handleTeamSelection = (teamId: string | number, teamData: any) => {
+    updateUserTeam(teamId, teamData);
+  };
 
   // Verificar se está carregando
   if (isLoading) {
@@ -73,7 +66,7 @@ const TeamSelection = () => {
                 {/* <CardDescription>{team.abbreviation}</CardDescription> */}
               </CardHeader>
               <CardContent>
-                <Link to={`/team/${team.id}/wall`} onClick={() => setUserTeamId(team.id, team)}>
+                <Link to={`/team/${team.id}/wall`} onClick={() => handleTeamSelection(team.id, team)}>
                   <Button className="w-full">
                     Gerenciar Time
                   </Button>

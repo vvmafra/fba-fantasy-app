@@ -37,22 +37,27 @@ export function PlayerCard({
                           player.isGLeague;
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-visible">
       {/* Nome, idade e OVR */}
       <div className="flex-1 flex items-center min-w-0">
-        <div className="flex-1 min-w-0">
-          <h3
-            className="font-semibold truncate flex-1 min-w-0 text-[15px] sm:text-md"
-            title={player.name}
-          >
-            {player.name} - {player.ovr} | {player.age}y
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <h3 className="font-semibold text-[15px] sm:text-md w-full flex items-center">
+            <span 
+              className="truncate flex-1 min-w-0"
+              title={player.name}
+            >
+              {player.name}
+            </span>
+            <span className="flex-shrink-0 ml-1">
+            {player.ovr} | {player.age}y
+            </span>
           </h3>
         </div>
       </div>
       
       {/* Controles */}
-      <div className="flex items-center gap-2 mt-2">
-        <Label htmlFor={`minutes-${player.id}`} className="text-xs md:text-sm whitespace-nowrap">
+      <div className="flex items-center gap-2 sm:gap-2 mt-2 relative z-10">
+        <Label htmlFor={`minutes-${player.id}`} className="text-xs whitespace-nowrap">
           Minutos:
         </Label>
         <Input
@@ -84,7 +89,7 @@ export function PlayerCard({
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
           disabled={player.isGLeague}
-          className="w-12 h-8 md:w-16 text-center"
+          className="w-16 h-8 text-center relative z-20"
         />
         
         {!isStarter && !isPlayoffs && onToggleGLeague && (
@@ -99,7 +104,7 @@ export function PlayerCard({
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             disabled={!isGLeagueEligible || !canSendToGLeague}
-            className="text-xs md:text-sm"
+            className="text-xs px-2 py-1"
           >
             {player.isGLeague ? 'Remover G-League' : 'G-League'}
           </Button>

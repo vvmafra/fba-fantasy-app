@@ -15,6 +15,7 @@ const router = Router();
 router.get('/test', RosterController.testConnection);
 router.get('/', validate(rosterQuerySchema), RosterController.getAllRosters);
 router.get('/active', RosterController.getActiveSeasonRoster);
+router.get('/with-details', RosterController.getAllRostersWithDetails);
 router.get('/season/:season_id', RosterController.getRosterBySeason);
 router.get('/:id', RosterController.getRosterById);
 

@@ -504,12 +504,23 @@ export class TradeService {
     
     // 3. Para cada asset, determinar o time de destino
     for (const asset of assets) {
-      // Encontrar o time que ofereceu este asset (não é o dono atual)
+      let toParticipantId = asset.to_participant_id;
+      if (!toParticipantId) {
+        // Buscar todos os participantes da trade
+        const participantsResult = await client.query(`
+          SELECT id FROM trade_participants WHERE trade_id = $1
+        `, [tradeId]);
+        const participantIds = participantsResult.rows.map(r => r.id);
+        if (participantIds.length === 2) {
+          // O destino é o outro participante
+          toParticipantId = participantIds.find(id => id !== asset.participant_id);
+        }
+      }
       const toTeamResult = await client.query(`
         SELECT tp.team_id
         FROM trade_participants tp
         WHERE tp.id = $1
-      `, [asset.to_participant_id]);
+      `, [toParticipantId]);
       const toTeamId = toTeamResult.rows[0].team_id;
       
       // 4. Registrar movimento
@@ -965,11 +976,24 @@ export class TradeService {
     return Number(rows[0]?.count || 0);
   }
 
+  // Contar trades executadas de um time em um período específico
+  static async countExecutedTradesByTeam(teamId: number, seasonStart: number, seasonEnd: number): Promise<number> {
+    const { rows } = await pool.query(`
+      SELECT COUNT(DISTINCT t.id) as trades_used
+      FROM trades t
+      JOIN trade_participants tp ON t.id = tp.trade_id
+      WHERE t.status = 'executed' 
+        AND tp.team_id = $1
+        AND t.season_id BETWEEN $2 AND $3
+    `, [teamId, seasonStart, seasonEnd]);
+    
+    return Number(rows[0]?.trades_used || 0);
+  }
+
   // Cancelar trade (apenas se não executada)
   static async cancelTrade(tradeId: number): Promise<void> {
     const client = await pool.connect();
     try {
-      console.log('cancelando trade', tradeId);
       await client.query('BEGIN');
       // Verifica status
       const tradeResult = await client.query('SELECT status FROM trades WHERE id = $1', [tradeId]);

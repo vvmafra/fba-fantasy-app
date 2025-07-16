@@ -66,74 +66,76 @@ export function RotationSettings({
           Configurações Rotação {isPlayoffs && '(Playoffs)'}
         </CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-        <div>
-          <Label htmlFor="rotationStyle">Estilo de Rotação</Label>
-          <Select value={rotationStyle} onValueChange={onRotationStyleChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="automatic">Automático</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="gameStyle">Estilo de Jogo</Label>
-          <Select value={gameStyle} onValueChange={onGameStyleChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o estilo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="balanced">Balanced</SelectItem>
-              <SelectItem value="triangle">Triangle</SelectItem>
-              <SelectItem value="grit_and_grind">Grit & Grind</SelectItem>
-              <SelectItem value="pace_and_space">Pace & Space</SelectItem>
-              <SelectItem value="perimeter_centric">Perimeter Centric</SelectItem>
-              <SelectItem value="post_centric">Post Centric</SelectItem>
-              <SelectItem value="seven_seconds">Seven Seconds</SelectItem>
-              <SelectItem value="defense">Defense</SelectItem>
-              <SelectItem value="best_for_fp">Melhor esquema para Franchise Player</SelectItem>
-              <SelectItem value="best_for_stars">Esquema com mais estrelas</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="offenseStyle">Estilo de Ataque</Label>
-          <Select value={offenseStyle} onValueChange={onOffenseStyleChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o estilo" />
-            </SelectTrigger>
-            <SelectContent>
-            <SelectItem value="no_preference">No Preference</SelectItem>
-              <SelectItem value="pick_and_roll">Pick & Roll Offense</SelectItem>
-              <SelectItem value="neutral_offensive_focus">Neutral Offensive Focus</SelectItem>
-              <SelectItem value="play_through_star">Play Through Star</SelectItem>
-              <SelectItem value="get_basket">Get To The Basket</SelectItem>
-              <SelectItem value="get_shooters_open">Get Shooters Open</SelectItem>
-              <SelectItem value="feed_the_post">Feed The Post</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="defenseStyle">Estilo de Defesa</Label>
-          <Select value={defenseStyle} onValueChange={onDefenseStyleChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o estilo" />
-            </SelectTrigger>
-            <SelectContent>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <div>
+            <Label htmlFor="rotationStyle">Estilo de Rotação</Label>
+            <Select value={rotationStyle} onValueChange={onRotationStyleChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="automatic">Automático</SelectItem>
+                <SelectItem value="manual">Manual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="gameStyle">Estilo de Jogo</Label>
+            <Select value={gameStyle} onValueChange={onGameStyleChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o estilo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="balanced">Balanced</SelectItem>
+                <SelectItem value="triangle">Triangle</SelectItem>
+                <SelectItem value="grit_and_grind">Grit & Grind</SelectItem>
+                <SelectItem value="pace_and_space">Pace & Space</SelectItem>
+                <SelectItem value="perimeter_centric">Perimeter Centric</SelectItem>
+                <SelectItem value="post_centric">Post Centric</SelectItem>
+                <SelectItem value="seven_seconds">Seven Seconds</SelectItem>
+                <SelectItem value="defense">Defense</SelectItem>
+                <SelectItem value="best_for_fp">Melhor esquema para Franchise Player</SelectItem>
+                <SelectItem value="best_for_stars">Esquema com mais estrelas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="offenseStyle">Estilo de Ataque</Label>
+            <Select value={offenseStyle} onValueChange={onOffenseStyleChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o estilo" />
+              </SelectTrigger>
+              <SelectContent>
               <SelectItem value="no_preference">No Preference</SelectItem>
-              <SelectItem value="protect_the_paint">Protect The Paint</SelectItem>
-              <SelectItem value="neutral_defensive_focus">Neutral Defensive Focus</SelectItem>
-              <SelectItem value="limit_perimeter_shots">Limit Perimeter Shots</SelectItem>
-            </SelectContent>
-          </Select>
+                <SelectItem value="pick_and_roll">Pick & Roll Offense</SelectItem>
+                <SelectItem value="neutral_offensive_focus">Neutral Offensive Focus</SelectItem>
+                <SelectItem value="play_through_star">Play Through Star</SelectItem>
+                <SelectItem value="get_basket">Get To The Basket</SelectItem>
+                <SelectItem value="get_shooters_open">Get Shooters Open</SelectItem>
+                <SelectItem value="feed_the_post">Feed The Post</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="defenseStyle">Estilo de Defesa</Label>
+            <Select value={defenseStyle} onValueChange={onDefenseStyleChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o estilo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_preference">No Preference</SelectItem>
+                <SelectItem value="protect_the_paint">Protect The Paint</SelectItem>
+                <SelectItem value="neutral_defensive_focus">Neutral Defensive Focus</SelectItem>
+                <SelectItem value="limit_perimeter_shots">Limit Perimeter Shots</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         {/* Franchise Player Selection - aparece apenas quando "best_for_fp" está selecionado */}
         {gameStyle === 'best_for_fp' && (
-          <div className="md:col-span-2">
+          <div className="w-full">
             <Label htmlFor="franchisePlayer">Franchise Player</Label>
             <Select 
               value={franchisePlayerId?.toString() || ''} 
@@ -155,7 +157,7 @@ export function RotationSettings({
 
         {/* Configurações Automáticas - aparecem apenas quando "automatic" está selecionado */}
         {rotationStyle === 'automatic' && (
-          <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div>
               <Label htmlFor="totalPlayersRotation">Jogadores na Rotação</Label>
               <Select 
@@ -247,7 +249,7 @@ export function RotationSettings({
                 </Select>
               </div>
             )}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

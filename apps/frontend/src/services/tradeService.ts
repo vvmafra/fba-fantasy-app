@@ -110,6 +110,14 @@ export interface TradeCounts {
   cancelled: number;
 }
 
+export interface TradeLimitInfo {
+  team_id: number;
+  season_start: number;
+  season_end: number;
+  trades_used: number;
+  trades_limit: number;
+}
+
 // Serviço de Trades
 export const tradeService = {
   // Buscar todas as trades com filtros
@@ -151,4 +159,11 @@ export const tradeService = {
   // Cancelar trade
   cancelTrade: (tradeId: number, created_by_team: number) =>
     apiRequest.delete(`/trades/${tradeId}/cancel?created_by_team=${created_by_team}`),
+
+  // Contar trades executadas de um time em um período
+  countExecutedTradesByTeam: (teamId: number, seasonStart: number, seasonEnd: number) =>
+    apiRequest.get<TradeLimitInfo>(`/trades/team/${teamId}/executed-count`, { 
+      season_start: seasonStart, 
+      season_end: seasonEnd 
+    }),
 }; 

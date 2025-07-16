@@ -72,20 +72,20 @@ const SortablePlayerCard = ({
       } ${selectedPlayerId === player.id ? 'ring-2 ring-blue-600' : ''}`}
       onClick={() => onPlayerClick && onPlayerClick(player.id)}
     >
-      <CardContent className="p-4 relative">
+      <CardContent className="p-4 pb-6 relative">
         <div className="flex items-center justify-between">
           {/* Handle de drag */}
-          <div
+          {/* <div
             className="mr-2 flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 cursor-grab active:cursor-grabbing"
             {...attributes}
             {...listeners}
             title="Arraste para mover"
           >
             <GripVertical size={16} />
-          </div>
+          </div> */}
 
           {/* O resto do card */}
-          <div className="flex items-center w-full min-w-0">
+          <div className="flex items-center w-full min-w-0 overflow-hidden max-w-full">
             {/* Badge de posição */}
             <div className="flex flex-col items-center justify-center col-span-1">
               <div 
@@ -105,7 +105,7 @@ const SortablePlayerCard = ({
             </div>
             
             {/* Conteúdo do PlayerCard */}
-            <div className="flex-1 ml-2 sm:ml-3">
+            <div className="flex-1 ml-2 sm:ml-3 min-w-0 pb-2" style={{ maxWidth: 'calc(100% - 60px)' }}>
               <PlayerCard
                 player={player}
                 isStarter={isStarter}
@@ -148,7 +148,7 @@ export function PlayerList({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="min-h-[100px]">
+        <div className="min-h-[100px] overflow-visible">
           {players.length > 0 ? (
             players.map((player, index) => (
               <SortablePlayerCard

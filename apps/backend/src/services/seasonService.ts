@@ -54,6 +54,141 @@ export class SeasonService {
     const { rows } = await pool.query('SELECT * FROM seasons WHERE is_active = true LIMIT 1');
     return rows[0];
   }
+
+  static async advanceToNextSeason() {
+    // Busca a temporada ativa atual
+    const { rows: activeRows } = await pool.query('SELECT * FROM seasons WHERE is_active = true LIMIT 1');
+    if (!activeRows.length) {
+      throw new Error('Nenhuma temporada ativa encontrada');
+    }
+    
+    const currentActive = activeRows[0];
+    
+    // Busca a próxima temporada
+    const { rows: nextRows } = await pool.query(
+      'SELECT * FROM seasons WHERE season_number > $1 ORDER BY season_number ASC LIMIT 1',
+      [currentActive.season_number]
+    );
+    
+    if (!nextRows.length) {
+      throw new Error('Não há próxima temporada disponível');
+    }
+    
+    const nextSeason = nextRows[0];
+    
+    // Inicia uma transação
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Desativa a temporada atual
+      await client.query(
+        'UPDATE seasons SET is_active = false WHERE id = $1',
+        [currentActive.id]
+      );
+      
+      // Ativa a próxima temporada
+      await client.query(
+        'UPDATE seasons SET is_active = true WHERE id = $1',
+        [nextSeason.id]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Retorna a nova temporada ativa
+      return nextSeason;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async goBackToPreviousSeason() {
+    // Busca a temporada ativa atual
+    const { rows: activeRows } = await pool.query('SELECT * FROM seasons WHERE is_active = true LIMIT 1');
+    if (!activeRows.length) {
+      throw new Error('Nenhuma temporada ativa encontrada');
+    }
+    
+    const currentActive = activeRows[0];
+    
+    // Busca a temporada anterior
+    const { rows: previousRows } = await pool.query(
+      'SELECT * FROM seasons WHERE season_number < $1 ORDER BY season_number DESC LIMIT 1',
+      [currentActive.season_number]
+    );
+    
+    if (!previousRows.length) {
+      throw new Error('Não há temporada anterior disponível');
+    }
+    
+    const previousSeason = previousRows[0];
+    
+    // Inicia uma transação
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Desativa a temporada atual
+      await client.query(
+        'UPDATE seasons SET is_active = false WHERE id = $1',
+        [currentActive.id]
+      );
+      
+      // Ativa a temporada anterior
+      await client.query(
+        'UPDATE seasons SET is_active = true WHERE id = $1',
+        [previousSeason.id]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Retorna a nova temporada ativa
+      return previousSeason;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  static async changeActiveSeason(seasonId: number) {
+    // Verifica se a temporada existe
+    const { rows: seasonRows } = await pool.query('SELECT * FROM seasons WHERE id = $1', [seasonId]);
+    if (!seasonRows.length) {
+      throw new Error('Temporada não encontrada');
+    }
+    
+    const targetSeason = seasonRows[0];
+    
+    // Inicia uma transação
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Desativa todas as temporadas
+      await client.query('UPDATE seasons SET is_active = false');
+      
+      // Ativa a temporada selecionada
+      await client.query(
+        'UPDATE seasons SET is_active = true WHERE id = $1',
+        [seasonId]
+      );
+      
+      await client.query('COMMIT');
+      
+      // Retorna a nova temporada ativa
+      return targetSeason;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 export default SeasonService; 

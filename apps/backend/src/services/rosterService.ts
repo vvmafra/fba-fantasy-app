@@ -184,15 +184,20 @@ export class RosterService {
         rosterData.game_style,
         rosterData.franchise_player_id,
         rosterData.offense_style,
-        rosterData.defense_style
+        rosterData.defense_style,
+        rosterData.offensive_tempo,
+        rosterData.offensive_rebounding,
+        rosterData.defensive_aggression,
+        rosterData.defensive_rebounding
       ];
 
       const { rows } = await pool.query(
         `INSERT INTO roster_season (
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           gleague1_player_id, gleague2_player_id, total_players_rotation, 
-          age_preference, game_style, franchise_player_id, offense_style, defense_style
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+          age_preference, game_style, franchise_player_id, offense_style, defense_style,
+          offensive_tempo, offensive_rebounding, defensive_aggression, defensive_rebounding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
         values
       );
 
@@ -277,6 +282,26 @@ export class RosterService {
         updates.push(`defense_style = $${paramCount}`);
         values.push(rosterData.defense_style);
       }
+      if (rosterData.offensive_tempo !== undefined) {
+        paramCount++;
+        updates.push(`offensive_tempo = $${paramCount}`);
+        values.push(rosterData.offensive_tempo);
+      }
+      if (rosterData.offensive_rebounding !== undefined) {
+        paramCount++;
+        updates.push(`offensive_rebounding = $${paramCount}`);
+        values.push(rosterData.offensive_rebounding);
+      }
+      if (rosterData.defensive_aggression !== undefined) {
+        paramCount++;
+        updates.push(`defensive_aggression = $${paramCount}`);
+        values.push(rosterData.defensive_aggression);
+      }
+      if (rosterData.defensive_rebounding !== undefined) {
+        paramCount++;
+        updates.push(`defensive_rebounding = $${paramCount}`);
+        values.push(rosterData.defensive_rebounding);
+      }
 
       if (updates.length === 0) {
         throw createError('Nenhum campo fornecido para atualização', 400);
@@ -332,6 +357,134 @@ export class RosterService {
       }
 
       return this.parseRosterMinutes(rows[0]);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Buscar todos os rosters com informações dos times e jogadores
+  static async getAllRostersWithDetails(params: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {}): Promise<any[]> {
+    try {
+      this.checkPostgresClient();
+      
+      const { season_id, sortBy = 'created_at', sortOrder = 'desc' } = params;
+      
+      let sql = `
+        SELECT 
+          rs.*,
+          t.name as team_name,
+          t.abbreviation as team_abbreviation
+        FROM roster_season rs
+        JOIN teams t ON rs.team_id = t.id
+        WHERE 1=1
+      `;
+      
+      const values: any[] = [];
+      let paramCount = 0;
+
+      if (season_id) {
+        paramCount++;
+        sql += ` AND rs.season_id = $${paramCount}`;
+        values.push(season_id);
+      }
+
+      sql += ` ORDER BY ${sortBy} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`;
+
+      const { rows } = await pool.query(sql, values);
+
+      // Para cada roster, buscar informações dos jogadores
+      const rostersWithDetails = await Promise.all(
+        rows.map(async (roster) => {
+          const parsedRoster = this.parseRosterMinutes(roster);
+          
+          // Buscar informações dos jogadores titulares
+          const startingPlayers: any[] = [];
+          if (parsedRoster.minutes_starting && parsedRoster.minutes_starting.length > 0) {
+            const playerIds = parsedRoster.minutes_starting.map(([id]: [number, number]) => id);
+            if (playerIds.length > 0) {
+              const { rows: playerRows } = await pool.query(
+                `SELECT id, name, position FROM players WHERE id = ANY($1)`,
+                [playerIds]
+              );
+              
+              // Mapear jogadores com suas posições e minutos
+              parsedRoster.minutes_starting.forEach(([playerId, minutes]: [number, number]) => {
+                const player = playerRows.find(p => p.id === playerId);
+                if (player) {
+                  startingPlayers.push({
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    minutes
+                  });
+                }
+              });
+            }
+          }
+
+          // Buscar informações dos jogadores reservas
+          const benchPlayers: any[] = [];
+          if (parsedRoster.minutes_bench && parsedRoster.minutes_bench.length > 0) {
+            const playerIds = parsedRoster.minutes_bench.map(([id]: [number, number]) => id);
+            if (playerIds.length > 0) {
+              const { rows: playerRows } = await pool.query(
+                `SELECT id, name, position FROM players WHERE id = ANY($1)`,
+                [playerIds]
+              );
+              
+              // Mapear jogadores com suas posições e minutos
+              parsedRoster.minutes_bench.forEach(([playerId, minutes]: [number, number]) => {
+                const player = playerRows.find(p => p.id === playerId);
+                if (player) {
+                  benchPlayers.push({
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    minutes
+                  });
+                }
+              });
+            }
+          }
+
+          // Buscar informações dos jogadores G-League
+          const gleaguePlayers: any[] = [];
+          if (parsedRoster.gleague1_player_id || parsedRoster.gleague2_player_id) {
+            const gleagueIds = [parsedRoster.gleague1_player_id, parsedRoster.gleague2_player_id].filter(Boolean);
+            if (gleagueIds.length > 0) {
+              const { rows: playerRows } = await pool.query(
+                `SELECT id, name, position FROM players WHERE id = ANY($1)`,
+                [gleagueIds]
+              );
+              gleaguePlayers.push(...playerRows);
+            }
+          }
+
+          // Buscar informações do franchise player se aplicável
+          let franchisePlayer = null;
+          if (parsedRoster.franchise_player_id) {
+            const { rows: playerRows } = await pool.query(
+              `SELECT id, name, position FROM players WHERE id = $1`,
+              [parsedRoster.franchise_player_id]
+            );
+            if (playerRows.length > 0) {
+              franchisePlayer = playerRows[0];
+            }
+          }
+
+          return {
+            ...parsedRoster,
+            team_name: roster.team_name,
+            team_abbreviation: roster.team_abbreviation,
+            starting_players: startingPlayers,
+            bench_players: benchPlayers,
+            gleague_players: gleaguePlayers,
+            franchise_player: franchisePlayer
+          };
+        })
+      );
+
+      return rostersWithDetails;
     } catch (error) {
       throw error;
     }

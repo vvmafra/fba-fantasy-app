@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp } from 'lucide-react';
-import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade } from '@/hooks/useTrades';
+import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade, useExecutedTradesCount } from '@/hooks/useTrades';
 import { useTeams } from '@/hooks/useTeams';
 import { useSeasonsFromActive } from '@/hooks/useSeasons';
 import { TradeWithDetails } from '@/services/tradeService';
 import TradeProposal from './forms/tradeProposal';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradeService } from '@/services/tradeService';
 
 interface TradesProps {
@@ -36,11 +36,22 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const { data: teamsData } = useTeams();
   const { data: seasonsData } = useSeasonsFromActive();
   
+  // Calcular período atual para limite de trades (a cada 2 temporadas)
+  const seasonStart = Math.floor((currentSeason - 1) / 2) * 2 + 1;
+  const seasonEnd = seasonStart + 1;
+  
+  // Hook para contar trades executadas no período atual
+  const { data: tradeLimitData } = useExecutedTradesCount(
+    teamId || 0, 
+    seasonStart, 
+    seasonEnd
+  );
+  
   const updateResponseMutation = useUpdateTradeResponse();
   const executeTradeMutation = useExecuteTrade();
   const revertTradeMutation = useRevertTrade();
   const cancelTradeMutation = useMutation({
-    mutationFn: (tradeId: number) => tradeService.cancelTrade(tradeId)
+    mutationFn: (tradeId: number) => tradeService.cancelTrade(tradeId, teamId || 0)
   });
   const { user } = useAuth();
 
@@ -60,6 +71,12 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const leagueExecutedTrades = tradesData?.data || [];
 
   const pendingCount = myPendingTrades.length;
+
+  // Calcular trades restantes
+  const tradesUsed = tradeLimitData?.data?.trades_used || 0;
+  const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
+  const tradesRemaining = tradesLimit - tradesUsed;
+  const canProposeTrade = tradesRemaining > 0;
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
@@ -127,7 +144,6 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
 
   const handleCancelTrade = async (tradeId: number) => {
     try {
-      console.log('cancelando trade: ', tradeId);
       setCancelingTradeId(tradeId);
       await cancelTradeMutation.mutateAsync(tradeId);
       if (typeof refetchMyTrades === 'function') refetchMyTrades();
@@ -299,22 +315,57 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
             <p className="text-xs text-gray-600">Minhas Pendentes</p>
           </CardContent>
         </Card>
-        <Card className="text-center">
+        {/* <Card className="text-center">
           <CardContent className="p-3">
             <p className="text-lg font-bold text-green-600">{myExecutedTrades.length}</p>
             <p className="text-xs text-gray-600">Minhas Executadas</p>
           </CardContent>
-        </Card>
-        {/* <Card className="text-center">
-          <CardContent className="p-3">
-            <p className="text-lg font-bold text-blue-600">{myValidTrades.length}</p>
-            <p className="text-xs text-gray-600">Totais (meu time)</p>
-          </CardContent>
         </Card> */}
+        <Card className="text-center">
+          <CardContent className="p-3">
+            <p className="text-lg font-bold text-green-600">{tradesUsed}</p>
+            <p className="text-xs text-gray-600">Trades Executadas</p>
+          </CardContent>
+        </Card>
+        <Card className="text-center">
+          <CardContent className="p-3">
+            <p className={`text-lg font-bold ${canProposeTrade ? 'text-gray-600' : 'text-red-600'}`}>
+              {tradesRemaining}
+            </p>
+            <p className="text-xs text-gray-600">Trades Restantes</p>
+            <p className="text-xs text-gray-500">Temp. {seasonStart}-{seasonEnd}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* New Trade Button */}
-      <TradeProposal teamId={teamId} isAdmin={isAdmin} onTradeCreated={refetchMyTrades} />
+      <TradeProposal 
+        teamId={teamId} 
+        isAdmin={isAdmin} 
+        onTradeCreated={refetchMyTrades}
+        canProposeTrade={canProposeTrade}
+        tradesRemaining={tradesRemaining}
+      />
+      
+      {/* Mensagem quando limite atingido */}
+      {!canProposeTrade && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <div>
+                <p className="text-sm font-medium text-orange-800">
+                  Limite de trades atingido para este período
+                </p>
+                <p className="text-xs text-orange-600">
+                  Você já utilizou todas as {tradesLimit} trades disponíveis para as temporadas {seasonStart}-{seasonEnd}.
+                  O limite será renovado no próximo período.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Minhas Trades Executadas */}
       {myExecutedTrades.length > 0 && (

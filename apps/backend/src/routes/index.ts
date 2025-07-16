@@ -8,6 +8,8 @@ import rosterRoutes from './rosterRoutes.js';
 import rosterPlayoffsRoutes from './rosterPlayoffsRoutes.js';
 import deadlineRoutes from './deadlineRoutes.js';
 import tradeRoutes from './tradeRoutes.js';
+import userRoutes from './userRoutes.js';
+import leagueCapRoutes from './leagueCapRoutes.js';
 
 const router = Router();
 
@@ -30,5 +32,7 @@ router.use('/roster', rosterRoutes);
 router.use('/roster-playoffs', rosterPlayoffsRoutes);
 router.use('/deadlines', deadlineRoutes);
 router.use('/trades', tradeRoutes);
+router.use('/users', userRoutes);
+router.use('/league-cap', leagueCapRoutes);
 
 export default router; 

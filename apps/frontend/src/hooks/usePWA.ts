@@ -17,14 +17,14 @@ export const usePWA = () => {
   useEffect(() => {
     // Registrar Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          console.log('SW registrado: ', registration);
-        })
-        .catch((registrationError) => {
-          console.log('SW falhou: ', registrationError);
+      if (process.env.NODE_ENV === 'production') {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/service-worker.js');
         });
+      } else {
+        // No dev, desregistra todos!
+        navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+      }
     }
 
     // Listener para evento de instalação
@@ -37,7 +37,6 @@ export const usePWA = () => {
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
-      console.log('PWA foi instalado');
     };
 
     // Listener para status online/offline
@@ -72,7 +71,6 @@ export const usePWA = () => {
   // Função para instalar o PWA
   const installPWA = async () => {
     if (!deferredPrompt) {
-      console.log('Prompt de instalação não disponível');
       return false;
     }
 
@@ -81,11 +79,9 @@ export const usePWA = () => {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === 'accepted') {
-        console.log('Usuário aceitou a instalação');
         setDeferredPrompt(null);
         return true;
       } else {
-        console.log('Usuário rejeitou a instalação');
         return false;
       }
     } catch (error) {
@@ -97,7 +93,6 @@ export const usePWA = () => {
   // Função para solicitar permissão de notificação
   const requestNotificationPermission = async () => {
     if (!('Notification' in window)) {
-      console.log('Este navegador não suporta notificações');
       return false;
     }
 
@@ -106,7 +101,6 @@ export const usePWA = () => {
     }
 
     if (Notification.permission === 'denied') {
-      console.log('Permissão de notificação negada');
       return false;
     }
 

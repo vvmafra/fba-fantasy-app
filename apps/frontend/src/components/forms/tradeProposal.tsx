@@ -18,6 +18,8 @@ interface TradeProposalProps {
   teamId?: number;
   isAdmin?: boolean;
   onTradeCreated?: () => void;
+  canProposeTrade?: boolean;
+  tradesRemaining?: number;
 }
 
 interface Participant {
@@ -31,7 +33,7 @@ interface Participant {
   }>;
 }
 
-const TradeProposal = ({ teamId, isAdmin = false, onTradeCreated }: TradeProposalProps) => {
+const TradeProposal = ({ teamId, isAdmin = false, onTradeCreated, canProposeTrade = true, tradesRemaining = 10 }: TradeProposalProps) => {
   const [open, setOpen] = useState(false);
   const [seasonId, setSeasonId] = useState<number>(1);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -188,9 +190,15 @@ const TradeProposal = ({ teamId, isAdmin = false, onTradeCreated }: TradeProposa
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="w-full bg-nba-blue hover:bg-nba-blue/90">
+        <Button 
+          className={`w-full ${canProposeTrade ? 'bg-nba-blue hover:bg-nba-blue/90' : 'bg-gray-400 cursor-not-allowed'}`}
+          disabled={!canProposeTrade}
+        >
           <Plus size={16} className="mr-2" />
-          Propor Nova Trade
+          {canProposeTrade 
+            ? `Propor Nova Trade (${tradesRemaining} restantes)`
+            : 'Limite de Trades Atingido'
+          }
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">

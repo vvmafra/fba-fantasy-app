@@ -6,9 +6,6 @@ export const requireTradeCreationPermission = async (req: Request, res: Response
   try {
     const user = (req as any).user;
     const created_by_team = req.body.created_by_team || req.query['created_by_team'];
-
-    console.log('user', user);
-    console.log('created_by_team', created_by_team);
     
     if (!user) {
       return res.status(401).json({ 

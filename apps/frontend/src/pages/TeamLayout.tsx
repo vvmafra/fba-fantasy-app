@@ -62,7 +62,6 @@ const TeamLayout = () => {
       </main>
       
       <Navigation 
-        teamId={teamId}
         isAdmin={authAdmin} 
       />
     </div>

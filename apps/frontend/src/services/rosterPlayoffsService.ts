@@ -14,6 +14,10 @@ export interface RosterPlayoffs {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
   created_at: string;
 }
 
@@ -29,6 +33,10 @@ export interface CreateRosterPlayoffsRequest {
   franchise_player_id?: number | null;
   offense_style?: string;
   defense_style?: string;
+  offensive_tempo?: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will' | null;
+  offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
+  defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
+  defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
 }
 
 export interface UpdateRosterPlayoffsRequest extends Partial<CreateRosterPlayoffsRequest> {

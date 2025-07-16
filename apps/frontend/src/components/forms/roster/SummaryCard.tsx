@@ -51,9 +51,14 @@ export function SummaryCard({
               </div>
             )}
           </div>
-          {!isPlayoffs && (
+          {!isPlayoffs ? (
             <div>
               <div className="text-xl md:text-2xl font-bold text-orange-600">{gleaguePlayers || 0}</div>
+              <div className="text-xs md:text-sm text-muted-foreground">G-League</div>
+            </div>
+          ) : (
+            <div>
+              <div className="text-xl md:text-2xl font-bold text-gray-600">-</div>
               <div className="text-xs md:text-sm text-muted-foreground">G-League</div>
             </div>
           )}

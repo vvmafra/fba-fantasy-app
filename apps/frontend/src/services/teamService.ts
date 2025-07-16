@@ -23,6 +23,7 @@ export interface CreateTeamData {
   name: string;
   abbreviation: string;
   owner_id?: number | null;
+  conference?: string | null;
   player_order?: {
     starters: number[];
     bench: number[];

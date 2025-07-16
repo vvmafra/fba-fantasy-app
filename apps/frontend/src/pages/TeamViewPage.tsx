@@ -11,9 +11,12 @@ interface TeamContext {
 }
 
 const TeamViewPage = () => {
-  const { user, isAdmin: authAdmin } = useAuth();
+  const { user, isAdmin: authAdmin, teamId } = useAuth();
   const { otherTeamId } = useParams();
   
-  return <ViewTeam isAdmin={authAdmin} teamId={parseInt(otherTeamId)} />
+  // Usar teamId do contexto se não houver otherTeamId (para visualizar o próprio time)
+  const teamIdToShow = otherTeamId ? parseInt(otherTeamId) : (teamId ? Number(teamId) : undefined);
+  
+  return <ViewTeam isAdmin={authAdmin} teamId={teamIdToShow} />
 };
 export default TeamViewPage;

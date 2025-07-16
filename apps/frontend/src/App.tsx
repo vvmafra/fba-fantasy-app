@@ -17,6 +17,11 @@ import TeamIndexRedirect from "@/components/TeamIndexRedirect";
 import Wall from "./components/Wall";
 import WallPage from "./pages/WallPage";
 import TeamViewPage from "./pages/TeamViewPage";
+import AdminLayout from "./pages/admin/AdminLayout";
+import UsersPage from "./pages/admin/UsersPage";
+import TeamsPage from "./pages/admin/TeamsPage";
+import SeasonsPage from "./pages/admin/SeasonsPage";
+import RostersSeasonPage from "./pages/admin/RostersSeasonPage";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 
@@ -59,6 +64,14 @@ const App = () => (
             <Route path="trades" element={<TradesPage />} />
             <Route path="free-agents" element={<FreeAgentsPage />} />
             <Route path="statistics" element={<StatisticsPage />} />
+          </Route>
+
+          {/* Rotas administrativas */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="users" element={<UsersPage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="seasons" element={<SeasonsPage />} />
+            <Route path="rosters-season" element={<RostersSeasonPage />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

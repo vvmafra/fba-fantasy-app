@@ -80,6 +80,44 @@ export class AuthService {
     }
   }
 
+  // Buscar usuário por email
+  static async findUserByEmail(email: string): Promise<any | null> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        `SELECT u.*, t.id AS "teamId"
+         FROM users u
+         LEFT JOIN teams t ON t.owner_id = u.id
+         WHERE u.email = $1`,
+        [email]
+      );
+
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Atualizar google_id de um usuário existente
+  static async updateUserGoogleId(userId: number, googleId: string): Promise<any> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        `UPDATE users 
+         SET google_id = $1, updated_at = NOW()
+         WHERE id = $2
+         RETURNING *`,
+        [googleId, userId]
+      );
+
+      return rows[0];
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Criar novo usuário
   static async createUser(googleId: string, email: string, name: string): Promise<any> {
     try {
@@ -113,14 +151,23 @@ export class AuthService {
       // 1. Validar token Google
       const googleUser = await this.validateGoogleToken(credential);
 
-      // 2. Buscar ou criar usuário
+      // 2. Buscar usuário por Google ID primeiro
       let user = await this.findUserByGoogleId(googleUser.id);
 
+      // 3. Se não encontrar por Google ID, verificar se existe por email
       if (!user) {
-        user = await this.createUser(googleUser.id, googleUser.email, googleUser.name);
+        const existingUserByEmail = await this.findUserByEmail(googleUser.email);
+        
+        if (existingUserByEmail) {
+          // Usuário existe mas não tem google_id, atualizar
+          user = await this.updateUserGoogleId(existingUserByEmail.id, googleUser.id);
+        } else {
+          // Usuário não existe, criar novo
+          user = await this.createUser(googleUser.id, googleUser.email, googleUser.name);
+        }
       }
 
-      // 3. Gerar JWT com role do usuário
+      // 4. Gerar JWT com role do usuário
       const userRole = user.role || 'user'; // Default para 'user' se não tiver role
       const token = this.generateJWT(user.id, user.email, userRole);
 

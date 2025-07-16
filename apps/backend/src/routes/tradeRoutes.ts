@@ -37,6 +37,9 @@ router.get('/my-trades/count', requireTradeViewPermission, TradeController.count
 // GET /api/v1/trades/team/:teamId - Buscar trades de um time específico
 router.get('/team/:teamId', requireTradeViewPermission, TradeController.getTradesByTeam);
 
+// GET /api/v1/trades/team/:teamId/executed-count - Contar trades executadas de um time em um período
+router.get('/team/:teamId/executed-count', requireTradeViewPermission, TradeController.countExecutedTradesByTeam);
+
 // GET /api/v1/trades/:id - Buscar trade por ID com detalhes
 router.get('/:id', validate(tradeIdSchema), TradeController.getTradeById);
 

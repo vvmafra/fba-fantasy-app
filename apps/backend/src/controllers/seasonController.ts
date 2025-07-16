@@ -60,4 +60,32 @@ export class SeasonController {
     }
     return res.status(200).json({ success: true, data: season });
   });
+
+  // POST /api/v1/seasons/advance-next - Avançar para próxima temporada
+  static advanceToNextSeason = asyncHandler(async (req: Request, res: Response) => {
+    const season = await SeasonService.advanceToNextSeason();
+
+    // TO BE IMPLEMENTED
+    // Adicionar picks subsequentes de todos os times
+    // se for para temporada impar, resetar número de trades de cada time
+    // Alterar as deadlines (datas)
+    // Ajuste de CAP (vai ser manual atualmente)
+    return res.status(200).json({ success: true, data: season, message: 'Avançou para próxima temporada com sucesso' });
+  });
+
+  // POST /api/v1/seasons/go-back - Voltar para temporada anterior
+  static goBackToPreviousSeason = asyncHandler(async (req: Request, res: Response) => {
+    const season = await SeasonService.goBackToPreviousSeason();
+    return res.status(200).json({ success: true, data: season, message: 'Voltou para temporada anterior com sucesso' });
+  });
+
+  // POST /api/v1/seasons/:id/activate - Alterar temporada ativa
+  static changeActiveSeason = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'ID é obrigatório' });
+    }
+    const season = await SeasonService.changeActiveSeason(Number(id));
+    return res.status(200).json({ success: true, data: season, message: 'Temporada ativa alterada com sucesso' });
+  });
 } 

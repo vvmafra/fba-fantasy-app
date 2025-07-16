@@ -17,6 +17,7 @@ import { RotationSettings } from './roster/RotationSettings';
 import { SummaryCard } from './roster/SummaryCard';
 import { useRosterPlayoffsValidation } from './roster/useRosterPlayoffsValidation';
 import { PlayerWithMinutes, ValidationErrors } from './roster/types';
+import { StrategyOptions } from './roster/StrategyOptions';
 
 interface RosterPlayoffsFormProps {
   isOpen: boolean;
@@ -79,6 +80,10 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
   const [gameStyle, setGameStyle] = useState('');
   const [offenseStyle, setOffenseStyle] = useState('');
   const [defenseStyle, setDefenseStyle] = useState('');
+  const [offensiveTempo, setOffensiveTempo] = useState<'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will'>('No preference');
+  const [offensiveRebounding, setOffensiveRebounding] = useState<'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back'>('No preference');
+  const [defensiveAggression, setDefensiveAggression] = useState<'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression'>('No preference');
+  const [defensiveRebounding, setDefensiveRebounding] = useState<'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference'>('No preference');
   const [franchisePlayerId, setFranchisePlayerId] = useState<number | null>(null);
   const [agePreference, setAgePreference] = useState<number | null>(null);
   const [totalPlayersRotation, setTotalPlayersRotation] = useState<number>(8);
@@ -106,6 +111,10 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
         setGameStyle(existingRoster.game_style || '');
         setOffenseStyle(existingRoster.offense_style || '');
         setDefenseStyle(existingRoster.defense_style || '');
+        setOffensiveTempo(existingRoster.offensive_tempo || 'No preference');
+        setOffensiveRebounding(existingRoster.offensive_rebounding || 'No preference');
+        setDefensiveAggression(existingRoster.defensive_aggression || 'No preference');
+        setDefensiveRebounding(existingRoster.defensive_rebounding || 'No preference');
         setFranchisePlayerId(existingRoster.franchise_player_id);
         setAgePreference(existingRoster.age_preference);
         setTotalPlayersRotation(existingRoster.total_players_rotation || 8);
@@ -413,7 +422,11 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
           game_style: gameStyle,
           franchise_player_id: franchisePlayerId,
           offense_style: offenseStyle,
-          defense_style: defenseStyle
+          defense_style: defenseStyle,
+          offensive_tempo: offensiveTempo,
+          offensive_rebounding: offensiveRebounding,
+          defensive_aggression: defensiveAggression,
+          defensive_rebounding: defensiveRebounding
         };
       } else {
         // Modo automático - não envia minutos específicos
@@ -428,7 +441,11 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
           game_style: gameStyle,
           franchise_player_id: franchisePlayerId,
           offense_style: offenseStyle,
-          defense_style: defenseStyle
+          defense_style: defenseStyle,
+          offensive_tempo: offensiveTempo,
+          offensive_rebounding: offensiveRebounding,
+          defensive_aggression: defensiveAggression,
+          defensive_rebounding: defensiveRebounding
         };
       }
 
@@ -562,6 +579,18 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
             onTotalPlayersRotationChange={setTotalPlayersRotation}
             onAgePreferenceChange={setAgePreference}
             isPlayoffs={true}
+          />
+
+          {/* Estratégias de Jogo */}
+          <StrategyOptions
+            offensiveTempo={offensiveTempo}
+            setOffensiveTempo={setOffensiveTempo}
+            offensiveRebounding={offensiveRebounding}
+            setOffensiveRebounding={setOffensiveRebounding}
+            defensiveAggression={defensiveAggression}
+            setDefensiveAggression={setDefensiveAggression}
+            defensiveRebounding={defensiveRebounding}
+            setDefensiveRebounding={setDefensiveRebounding}
           />
 
           {/* Lista de Jogadores com Drag and Drop - apenas no modo manual */}

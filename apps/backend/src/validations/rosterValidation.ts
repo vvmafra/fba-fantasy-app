@@ -17,6 +17,18 @@ export const createRosterSeasonSchema = z.object({
   franchise_player_id: z.number().positive('ID do jogador franquia deve ser positivo').nullable().optional(),
   offense_style: z.string().max(50, 'Estilo de ataque deve ter no máximo 50 caracteres'),
   defense_style: z.string().max(50, 'Estilo de defesa deve ter no máximo 50 caracteres'),
+  offensive_tempo: z.enum(['No preference', 'Patient Offense', 'Average Tempo', 'Shoot at Will'], {
+    errorMap: () => ({ message: 'Tempo ofensivo deve ser uma das opções válidas' })
+  }).optional(),
+  offensive_rebounding: z.enum(['Limit Transition', 'No preference', 'Crash Offensive Glass', 'Some Crash, Others Get Back'], {
+    errorMap: () => ({ message: 'Rebote ofensivo deve ser uma das opções válidas' })
+  }).optional(),
+  defensive_aggression: z.enum(['Play Physical Defense', 'No preference', 'Conservative Defense', 'Neutral Defensive Aggression'], {
+    errorMap: () => ({ message: 'Agressão defensiva deve ser uma das opções válidas' })
+  }).optional(),
+  defensive_rebounding: z.enum(['Run in Transition', 'Crash Defensive Glass', 'Some Crash, Others Run', 'No preference'], {
+    errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
+  }).optional(),
 });
 
 // Schema para atualização de roster
@@ -36,6 +48,18 @@ export const updateRosterSeasonSchema = z.object({
   franchise_player_id: z.number().positive('ID do jogador franquia deve ser positivo').nullable().optional(),
   offense_style: z.string().max(50, 'Estilo de ataque deve ter no máximo 50 caracteres'),
   defense_style: z.string().max(50, 'Estilo de defesa deve ter no máximo 50 caracteres'),
+  offensive_tempo: z.enum(['No preference', 'Patient Offense', 'Average Tempo', 'Shoot at Will'], {
+    errorMap: () => ({ message: 'Tempo ofensivo deve ser uma das opções válidas' })
+  }).optional(),
+  offensive_rebounding: z.enum(['Limit Transition', 'No preference', 'Crash Offensive Glass', 'Some Crash, Others Get Back'], {
+    errorMap: () => ({ message: 'Rebote ofensivo deve ser uma das opções válidas' })
+  }).optional(),
+  defensive_aggression: z.enum(['Play Physical Defense', 'No preference', 'Conservative Defense', 'Neutral Defensive Aggression'], {
+    errorMap: () => ({ message: 'Agressão defensiva deve ser uma das opções válidas' })
+  }).optional(),
+  defensive_rebounding: z.enum(['Run in Transition', 'Crash Defensive Glass', 'Some Crash, Others Run', 'No preference'], {
+    errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
+  }).optional(),
 });
 
 // Schema para ID do roster

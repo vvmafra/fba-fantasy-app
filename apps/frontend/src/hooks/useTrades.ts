@@ -6,7 +6,8 @@ import {
   CreateTradeRequest, 
   UpdateTradeParticipantRequest,
   TradeQueryParams,
-  TradeCounts
+  TradeCounts,
+  TradeLimitInfo
 } from '@/services/tradeService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,6 +20,8 @@ export const tradeKeys = {
   detail: (id: number) => [...tradeKeys.details(), id] as const,
   team: (teamId: number) => [...tradeKeys.all, 'team', teamId] as const,
   counts: () => [...tradeKeys.all, 'counts'] as const,
+  executedCount: (teamId: number, seasonStart: number, seasonEnd: number) => 
+    [...tradeKeys.all, 'executed-count', teamId, seasonStart, seasonEnd] as const,
 };
 
 // Hook para buscar todas as trades
@@ -55,6 +58,16 @@ export const useTradeCounts = (seasonId?: number) => {
     queryKey: tradeKeys.counts(),
     queryFn: () => tradeService.getTradeCounts(seasonId),
     staleTime: 5 * 60 * 1000, // 5 minutos
+  });
+};
+
+// Hook para contar trades executadas de um time em um período
+export const useExecutedTradesCount = (teamId: number, seasonStart: number, seasonEnd: number) => {
+  return useQuery({
+    queryKey: tradeKeys.executedCount(teamId, seasonStart, seasonEnd),
+    queryFn: () => tradeService.countExecutedTradesByTeam(teamId, seasonStart, seasonEnd),
+    enabled: !!teamId && !!seasonStart && !!seasonEnd,
+    staleTime: 2 * 60 * 1000, // 2 minutos
   });
 };
 

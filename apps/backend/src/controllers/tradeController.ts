@@ -179,6 +179,39 @@ export class TradeController {
     res.status(200).json({ success: true, data: count });
   });
 
+  // GET /api/v1/trades/team/:teamId/executed-count - Contar trades executadas de um time em um período
+  static countExecutedTradesByTeam = asyncHandler(async (req: Request, res: Response) => {
+    const { teamId } = req.params;
+    const { season_start, season_end } = req.query;
+    
+    if (!teamId) {
+      res.status(400).json({ success: false, message: 'Team ID é obrigatório' });
+      return;
+    }
+    
+    if (!season_start || !season_end) {
+      res.status(400).json({ success: false, message: 'season_start e season_end são obrigatórios' });
+      return;
+    }
+    
+    const count = await TradeService.countExecutedTradesByTeam(
+      Number(teamId), 
+      Number(season_start), 
+      Number(season_end)
+    );
+    
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        team_id: Number(teamId),
+        season_start: Number(season_start),
+        season_end: Number(season_end),
+        trades_used: count,
+        trades_limit: 10
+      }
+    });
+  });
+
   // CANCELAR trade (iniciador ou admin)
   static cancelTrade = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
