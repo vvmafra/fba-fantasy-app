@@ -134,6 +134,15 @@ export default function RostersSeasonPage() {
     });
   };
 
+  // Função para obter nome abreviado (primeira letra + sobrenome)
+  const getAbbreviatedName = (fullName: string) => {
+    const parts = fullName.split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+    }
+    return fullName; // Se não tiver sobrenome, retorna o nome completo
+  };
+
   // Função para obter nome do estilo de jogo
   const getGameStyleName = (style: string) => {
     const styles: Record<string, string> = {
@@ -292,7 +301,7 @@ export default function RostersSeasonPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">
@@ -307,13 +316,13 @@ export default function RostersSeasonPage() {
                         }}
                       />
                     </TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Minutagem Titular</TableHead>
-                    <TableHead>Minutagem Reservas</TableHead>
-                    <TableHead>G-League</TableHead>
-                    <TableHead>Configurações</TableHead>
-                    <TableHead>Estratégias</TableHead>
-                    <TableHead>Enviado em</TableHead>
+                    <TableHead className="w-24">Time</TableHead>
+                    <TableHead className="min-w-[170px] md:min-w-[200px]">Titulares</TableHead>
+                    <TableHead className="min-w-[150px] md:min-w-[200px]">Reservas</TableHead>
+                    <TableHead className="min-w-[150px] md:min-w-[200px]">G-League</TableHead>
+                    <TableHead className="min-w-[100px] md:min-w-[150px]">Config</TableHead>
+                    <TableHead className="min-w-[150px] md:min-w-[150px]">Estratégias</TableHead>
+                    <TableHead className="w-24">Enviado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -330,57 +339,57 @@ export default function RostersSeasonPage() {
                         <div className="text-sm text-muted-foreground">{roster.team_abbreviation}</div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {roster.starting_players.map((player, index) => {
                             const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
                             return (
-                              <div key={player.id} className="text-sm">
-                                {positions[index]}: {player.name} - {player.minutes}min
+                              <div key={player.id} className="text-xs">
+                                {positions[index]}: {getAbbreviatedName(player.name)} ({player.minutes}min)
                               </div>
                             );
                           })}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {roster.bench_players.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name} - {player.minutes}min
+                            <div key={player.id} className="text-xs">
+                              {getAbbreviatedName(player.name)} ({player.minutes}min)
                             </div>
                           ))}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {roster.gleague_players.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name}
+                            <div key={player.id} className="text-xs">
+                              {getAbbreviatedName(player.name)}
                             </div>
                           ))}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div><strong>Jogo:</strong> {getGameStyleName(roster.game_style || '')}</div>
-                          <div><strong>Ataque:</strong> {getOffenseStyleName(roster.offense_style || '')}</div>
-                          <div><strong>Defesa:</strong> {getDefenseStyleName(roster.defense_style || '')}</div>
+                        <div className="space-y-0.5 text-xs">
+                          <div><strong>STYLE:</strong> {getGameStyleName(roster.game_style || '')}</div>
+                          <div><strong>OFF:</strong> {getOffenseStyleName(roster.offense_style || '')}</div>
+                          <div><strong>DEF:</strong> {getDefenseStyleName(roster.defense_style || '')}</div>
                           {roster.game_style === 'best_for_fp' && roster.franchise_player && (
                             <div className="text-xs text-muted-foreground">
-                              FP: {roster.franchise_player.name}
+                              FP: {getAbbreviatedName(roster.franchise_player.name)}
                             </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div><strong>Tempo:</strong> {roster.offensive_tempo || 'N/A'}</div>
-                          <div><strong>Rebote Of.:</strong> {roster.offensive_rebounding || 'N/A'}</div>
-                          <div><strong>Agressão Def.:</strong> {roster.defensive_aggression || 'N/A'}</div>
-                          <div><strong>Rebote Def.:</strong> {roster.defensive_rebounding || 'N/A'}</div>
+                        <div className="space-y-0.5 text-xs">
+                          <div><strong>OFF-TEMP:</strong> {roster.offensive_tempo || 'N/A'}</div>
+                          <div><strong>OFF-RBD:</strong> {roster.offensive_rebounding || 'N/A'}</div>
+                          <div><strong>DEF-AG:</strong> {roster.defensive_aggression || 'N/A'}</div>
+                          <div><strong>DEF-RBD:</strong> {roster.defensive_rebounding || 'N/A'}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {formatDate(roster.created_at)}
                         </div>
                       </TableCell>
@@ -418,7 +427,7 @@ export default function RostersSeasonPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">
@@ -433,13 +442,13 @@ export default function RostersSeasonPage() {
                         }}
                       />
                     </TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Jogadores na Rotação</TableHead>
-                    <TableHead>Preferência de Idade</TableHead>
-                    <TableHead>G-League</TableHead>
-                    <TableHead>Configurações</TableHead>
-                    <TableHead>Estratégias</TableHead>
-                    <TableHead>Enviado em</TableHead>
+                    <TableHead className="w-24">Time</TableHead>
+                    <TableHead className="min-w-[120px] md:min-w-[150px]">Rotação</TableHead>
+                    <TableHead className="w-20">Idade</TableHead>
+                    <TableHead className="w-20">G-League</TableHead>
+                    <TableHead className="min-w-[150px] md:min-w-[200px]">Config</TableHead>
+                    <TableHead className="min-w-[150px] md:min-w-[200px]">Estratégias</TableHead>
+                    <TableHead className="w-24">Enviado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -463,45 +472,45 @@ export default function RostersSeasonPage() {
                       <TableCell>
                         <div className="text-sm">
                           {roster.age_preference !== null ? (
-                            <Badge variant={roster.age_preference > 50 ? 'destructive' : 'secondary'}>
-                              {roster.age_preference}% (foco em {roster.age_preference > 50 ? 'velhos' : 'jovens'})
-                            </Badge>
+                            <div>
+                              {roster.age_preference}%
+                            </div>
                           ) : (
                             <span className="text-muted-foreground">Sem preferência</span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <div className="space-y-0.5">
                           {roster.gleague_players.map((player) => (
-                            <div key={player.id} className="text-sm">
-                              {player.name}
+                            <div key={player.id} className="text-xs">
+                              {getAbbreviatedName(player.name)}
                             </div>
                           ))}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div><strong>Jogo:</strong> {getGameStyleName(roster.game_style || '')}</div>
-                          <div><strong>Ataque:</strong> {getOffenseStyleName(roster.offense_style || '')}</div>
-                          <div><strong>Defesa:</strong> {getDefenseStyleName(roster.defense_style || '')}</div>
+                        <div className="space-y-0.5 text-xs">
+                          <div><strong>STYLE:</strong> {getGameStyleName(roster.game_style || '')}</div>
+                          <div><strong>OFF:</strong> {getOffenseStyleName(roster.offense_style || '')}</div>
+                          <div><strong>DEF:</strong> {getDefenseStyleName(roster.defense_style || '')}</div>
                           {roster.game_style === 'best_for_fp' && roster.franchise_player && (
                             <div className="text-xs text-muted-foreground">
-                              FP: {roster.franchise_player.name}
+                              FP: {getAbbreviatedName(roster.franchise_player.name)}
                             </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div><strong>Tempo:</strong> {roster.offensive_tempo || 'N/A'}</div>
-                          <div><strong>Rebote Of.:</strong> {roster.offensive_rebounding || 'N/A'}</div>
-                          <div><strong>Agressão Def.:</strong> {roster.defensive_aggression || 'N/A'}</div>
-                          <div><strong>Rebote Def.:</strong> {roster.defensive_rebounding || 'N/A'}</div>
+                        <div className="space-y-0.5 text-xs">
+                          <div><strong>OFF-TEMP:</strong> {roster.offensive_tempo || 'N/A'}</div>
+                          <div><strong>OFF-RBD:</strong> {roster.offensive_rebounding || 'N/A'}</div>
+                          <div><strong>DEF-AG:</strong> {roster.defensive_aggression || 'N/A'}</div>
+                          <div><strong>DEF-RBD:</strong> {roster.defensive_rebounding || 'N/A'}</div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           {formatDate(roster.created_at)}
                         </div>
                       </TableCell>

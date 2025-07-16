@@ -24,6 +24,8 @@ import SeasonsPage from "./pages/admin/SeasonsPage";
 import RostersSeasonPage from "./pages/admin/RostersSeasonPage";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,49 +36,71 @@ const queryClient = new QueryClient({
   },
 });
 
+// Componente para verificar autenticação e redirecionar
+const AuthGuard = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading, checkAuth } = useAuth();
+
+  useEffect(() => {
+    const checkAuthentication = async () => {
+      if (!isLoading && !user) {
+        const isAuthenticated = await checkAuth();
+        if (isAuthenticated) {
+          // Se o usuário está autenticado mas não tem dados carregados, recarregar a página
+          window.location.reload();
+        }
+      }
+    };
+
+    checkAuthentication();
+  }, [user, isLoading, checkAuth]);
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          {/* Página de login como rota principal */}
-          <Route path="/" element={<LoginPage />} />
-          
-          {/* Página de seleção de time */}
-          <Route path="/teams" element={<TeamSelection />} />
+        <AuthGuard>
+          <Routes>
+            {/* Página de login como rota principal */}
+            <Route path="/" element={<LoginPage />} />
+            
+            {/* Página de seleção de time */}
+            <Route path="/teams" element={<TeamSelection />} />
 
-         
+           
 
+            {/* Rotas do time com layout compartilhado */}
+            <Route path="/team/:teamId" element={<TeamLayout />}>
+              {/* Redireciona /team/:teamId para /team/:teamId/myteam */}
+              <Route index element={<TeamIndexRedirect />} />
+              <Route path="wall" element={<WallPage />} />
+              <Route path="myteam" element={
+                <OwnerRoute>
+                  <MyTeamPage />
+                </OwnerRoute>
+              } />
+               <Route path="view/:otherTeamId" element={<TeamViewPage />} />
+              <Route path="trades" element={<TradesPage />} />
+              <Route path="free-agents" element={<FreeAgentsPage />} />
+              <Route path="statistics" element={<StatisticsPage />} />
+            </Route>
 
-          {/* Rotas do time com layout compartilhado */}
-          <Route path="/team/:teamId" element={<TeamLayout />}>
-            {/* Redireciona /team/:teamId para /team/:teamId/myteam */}
-            <Route index element={<TeamIndexRedirect />} />
-            <Route path="wall" element={<WallPage />} />
-            <Route path="myteam" element={
-              <OwnerRoute>
-                <MyTeamPage />
-              </OwnerRoute>
-            } />
-             <Route path="view/:otherTeamId" element={<TeamViewPage />} />
-            <Route path="trades" element={<TradesPage />} />
-            <Route path="free-agents" element={<FreeAgentsPage />} />
-            <Route path="statistics" element={<StatisticsPage />} />
-          </Route>
-
-          {/* Rotas administrativas */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route path="users" element={<UsersPage />} />
-            <Route path="teams" element={<TeamsPage />} />
-            <Route path="seasons" element={<SeasonsPage />} />
-            <Route path="rosters-season" element={<RostersSeasonPage />} />
-          </Route>
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+            {/* Rotas administrativas */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="users" element={<UsersPage />} />
+              <Route path="teams" element={<TeamsPage />} />
+              <Route path="seasons" element={<SeasonsPage />} />
+              <Route path="rosters-season" element={<RostersSeasonPage />} />
+            </Route>
+            
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthGuard>
       </BrowserRouter>
       
       {/* Componentes PWA */}

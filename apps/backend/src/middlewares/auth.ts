@@ -1,12 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import pool from '../utils/postgresClient.js';
+import { SECURITY_CONFIG, logSecurityEvent } from '../config/security.js';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = (req.headers as any).authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
+    logSecurityEvent('AUTH_FAILED', { 
+      reason: 'Token não fornecido', 
+      ip: req.ip, 
+      path: req.path 
+    });
     res.status(401).json({ 
       success: false, 
       message: 'Token de acesso é obrigatório' 
@@ -15,7 +21,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const decoded = jwt.verify(token, process.env['JWT_SECRET']!) as any;
+    const decoded = jwt.verify(token, SECURITY_CONFIG.JWT.SECRET) as any;
     (req as any).user = {
       id: decoded.userId.toString(),
       email: decoded.email,
@@ -24,12 +30,156 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
     next();
   } catch (error) {
+    logSecurityEvent('AUTH_FAILED', { 
+      reason: 'Token inválido ou expirado', 
+      ip: req.ip, 
+      path: req.path,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
     res.status(403).json({ 
       success: false, 
       message: 'Token inválido ou expirado' 
     });
     return;
   }
+};
+
+// Middleware para validar refresh token com segurança adicional
+export const validateRefreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId, refreshToken } = req.body;
+
+    if (!userId || !refreshToken) {
+      logSecurityEvent('REFRESH_TOKEN_FAILED', { 
+        reason: 'Dados obrigatórios ausentes', 
+        ip: req.ip 
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'userId e refreshToken são obrigatórios'
+      });
+    }
+
+    // Verificar se o refresh token é válido no banco
+    const { rows } = await pool.query(
+      `SELECT refresh_token, token_updated_at, email 
+       FROM users 
+       WHERE id = $1 AND refresh_token = $2`,
+      [userId, refreshToken]
+    );
+
+    if (rows.length === 0) {
+      logSecurityEvent('REFRESH_TOKEN_FAILED', { 
+        reason: 'Token inválido no banco', 
+        ip: req.ip,
+        userId 
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token inválido'
+      });
+    }
+
+    // Verificar se o token não expirou (usando configuração)
+    const tokenUpdatedAt = new Date(rows[0].token_updated_at);
+    const now = new Date();
+    const daysDiff = (now.getTime() - tokenUpdatedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+    if (daysDiff > SECURITY_CONFIG.REFRESH_TOKEN.MAX_AGE_DAYS) {
+      logSecurityEvent('REFRESH_TOKEN_FAILED', { 
+        reason: 'Token expirado', 
+        ip: req.ip,
+        userId,
+        daysDiff: Math.round(daysDiff)
+      });
+      return res.status(401).json({
+        success: false,
+        message: 'Refresh token expirado'
+      });
+    }
+
+    // Adicionar dados do usuário à requisição
+    (req as any).refreshUser = {
+      id: userId,
+      email: rows[0].email,
+      refreshToken
+    };
+
+    next();
+  } catch (error) {
+    logSecurityEvent('REFRESH_TOKEN_ERROR', { 
+      reason: 'Erro interno', 
+      ip: req.ip,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    console.error('Erro na validação do refresh token:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erro interno do servidor'
+    });
+  }
+};
+
+// Cache simples para rate limiting (em produção, use Redis)
+const rateLimitCache = new Map<string, { count: number; resetTime: number }>();
+
+// Middleware para rate limiting básico
+export const rateLimit = (req: Request, res: Response, next: NextFunction) => {
+  const clientIP = req.ip || req.connection.remoteAddress;
+  const endpoint = req.path;
+  
+  // Determinar limite baseado no endpoint
+  let maxRequests = SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.GENERAL;
+  if (endpoint.includes('/login') || endpoint.includes('/google-login')) {
+    maxRequests = SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.LOGIN;
+  } else if (endpoint.includes('/refresh')) {
+    maxRequests = SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.REFRESH;
+  }
+  
+  const key = `${clientIP}:${endpoint}`;
+  const now = Date.now();
+  const windowMs = SECURITY_CONFIG.RATE_LIMIT.WINDOW_MS;
+  
+  // Limpar cache expirado
+  if (rateLimitCache.has(key)) {
+    const entry = rateLimitCache.get(key)!;
+    if (now > entry.resetTime) {
+      rateLimitCache.delete(key);
+    }
+  }
+  
+  // Verificar rate limit
+  if (rateLimitCache.has(key)) {
+    const entry = rateLimitCache.get(key)!;
+    if (entry.count >= maxRequests) {
+      logSecurityEvent('RATE_LIMIT_EXCEEDED', { 
+        ip: clientIP, 
+        endpoint, 
+        maxRequests,
+        currentCount: entry.count
+      });
+      return res.status(429).json({
+        success: false,
+        message: 'Muitas requisições. Tente novamente mais tarde.',
+        retryAfter: Math.ceil((entry.resetTime - now) / 1000)
+      });
+    }
+    entry.count++;
+  } else {
+    rateLimitCache.set(key, {
+      count: 1,
+      resetTime: now + windowMs
+    });
+  }
+  
+  logSecurityEvent('RATE_LIMIT_CHECK', { 
+    ip: clientIP, 
+    endpoint, 
+    maxRequests,
+    currentCount: rateLimitCache.get(key)?.count || 1
+  });
+  
+  next();
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
@@ -249,7 +399,6 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
   try {
     const user = (req as any).user;
     const teamId = parseInt(req.params['teamId'] || req.params['id'] || '0');
-    const updateData = req.body;
     
     if (!user) {
       return res.status(401).json({ 
@@ -265,6 +414,11 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
       });
     }
 
+    // Se for admin, permitir tudo
+    if (user.role === 'admin') {
+      return next();
+    }
+
     // Buscar o time no banco para verificar o owner_id
     const { rows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [teamId]);
     
@@ -277,35 +431,16 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
 
     const teamOwnerId = rows[0].owner_id;
     const userId = parseInt(user.id);
-    const isAdmin = user.role === 'admin';
-    const isOwner = teamOwnerId === userId;
 
-    // Se é admin, pode editar qualquer campo
-    if (isAdmin) {
-      return next();
-    }
-
-    // Se não é admin nem dono, negar acesso
-    if (!isOwner) {
+    // Verificar se o usuário é o dono do time
+    if (teamOwnerId !== userId) {
       return res.status(403).json({ 
         success: false, 
         message: 'Acesso negado. Apenas o dono do time pode realizar esta ação.' 
       });
     }
 
-    // Se é dono, verificar se está tentando editar apenas player_order
-    const allowedFields = ['player_order'];
-    const attemptedFields = Object.keys(updateData);
-    const hasUnauthorizedFields = attemptedFields.some(field => !allowedFields.includes(field));
-
-    if (hasUnauthorizedFields) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Acesso negado. Como dono do time, você só pode alterar a ordem dos players (player_order). Para outras alterações, contate um administrador.' 
-      });
-    }
-
-    next();
+    return next();
   } catch (error) {
     console.error('Erro no middleware requireTeamEditPermission:', error);
     return res.status(500).json({ 
@@ -315,7 +450,7 @@ export const requireTeamEditPermission = async (req: Request, res: Response, nex
   }
 };
 
-// Middleware combinado: autenticação + permissões de edição de time
+// Middleware combinado: autenticação + permissão de edição de time
 export const authenticateAndRequireTeamEditPermission = (req: Request, res: Response, next: NextFunction) => {
   authenticateToken(req, res, (err) => {
     if (err) return next(err);

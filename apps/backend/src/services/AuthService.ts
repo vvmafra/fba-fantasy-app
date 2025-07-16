@@ -12,6 +12,8 @@ export interface GoogleUser {
 export interface AuthResponse {
   user: any;
   token: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 export class AuthService {
@@ -134,14 +136,68 @@ export class AuthService {
     }
   }
 
-  // Gerar JWT token
+  // Salvar refresh token no banco
+  static async saveRefreshToken(userId: number, refreshToken: string): Promise<void> {
+    try {
+      this.checkPostgresClient();
+      
+      await pool.query(
+        `UPDATE users 
+         SET refresh_token = $1, token_updated_at = NOW()
+         WHERE id = $2`,
+        [refreshToken, userId]
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Verificar se refresh token é válido
+  static async validateRefreshToken(userId: number, refreshToken: string): Promise<boolean> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        `SELECT refresh_token, token_updated_at 
+         FROM users 
+         WHERE id = $1 AND refresh_token = $2`,
+        [userId, refreshToken]
+      );
+
+      if (rows.length === 0) {
+        return false;
+      }
+
+      // Verificar se o token não expirou (30 dias)
+      const tokenUpdatedAt = new Date(rows[0].token_updated_at);
+      const now = new Date();
+      const daysDiff = (now.getTime() - tokenUpdatedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+      return daysDiff <= 30;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Gerar JWT token (30 dias de expiração)
   static generateJWT(userId: number, email: string, role: string = 'user'): string {
     this.checkEnvironmentVariables();
 
     return jwt.sign(
       { userId, email, role },
       process.env['JWT_SECRET']!,
-      { expiresIn: '7d' }
+      { expiresIn: '30d' }
+    );
+  }
+
+  // Gerar refresh token
+  static generateRefreshToken(): string {
+    this.checkEnvironmentVariables();
+    
+    return jwt.sign(
+      { type: 'refresh' },
+      process.env['JWT_SECRET']!,
+      { expiresIn: '30d' }
     );
   }
 
@@ -167,11 +223,63 @@ export class AuthService {
         }
       }
 
-      // 4. Gerar JWT com role do usuário
-      const userRole = user.role || 'user'; // Default para 'user' se não tiver role
+      // 4. Gerar JWT e refresh token
+      const userRole = user.role || 'user';
       const token = this.generateJWT(user.id, user.email, userRole);
+      const refreshToken = this.generateRefreshToken();
 
-      return { user, token };
+      // 5. Salvar refresh token no banco
+      await this.saveRefreshToken(user.id, refreshToken);
+
+      return { 
+        user, 
+        token, 
+        refreshToken,
+        expiresIn: 30 * 24 * 60 * 60 * 1000 // 30 dias em millisegundos
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Renovar token usando refresh token
+  static async refreshToken(userId: number, refreshToken: string): Promise<AuthResponse> {
+    try {
+      // Verificar se o refresh token é válido
+      const isValid = await this.validateRefreshToken(userId, refreshToken);
+      if (!isValid) {
+        throw createError('Refresh token inválido ou expirado', 401);
+      }
+
+      // Buscar dados do usuário
+      const { rows } = await pool.query(
+        `SELECT u.*, t.id AS "teamId"
+         FROM users u
+         LEFT JOIN teams t ON t.owner_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+
+      if (rows.length === 0) {
+        throw createError('Usuário não encontrado', 404);
+      }
+
+      const user = rows[0];
+
+      // Gerar novo JWT e refresh token
+      const userRole = user.role || 'user';
+      const newToken = this.generateJWT(user.id, user.email, userRole);
+      const newRefreshToken = this.generateRefreshToken();
+
+      // Salvar novo refresh token no banco
+      await this.saveRefreshToken(user.id, newRefreshToken);
+
+      return { 
+        user, 
+        token: newToken, 
+        refreshToken: newRefreshToken,
+        expiresIn: 30 * 24 * 60 * 60 * 1000
+      };
     } catch (error) {
       throw error;
     }

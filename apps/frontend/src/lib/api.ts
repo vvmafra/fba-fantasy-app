@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from './config';
+import { authStorage, ensureValidToken } from './auth';
 
 // Configuração base do cliente HTTP
 export const apiClient = axios.create({
@@ -12,9 +13,12 @@ export const apiClient = axios.create({
 
 // Interceptor para requisições
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Verificar e renovar token se necessário
+    await ensureValidToken();
+    
     // Adicionar token de autenticação se disponível
-    const token = localStorage.getItem('authToken');
+    const token = authStorage.getToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -30,11 +34,11 @@ apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
     // Tratamento global de erros
     if (error.response?.status === 401) {
       // Token expirado ou inválido
-      localStorage.removeItem('authToken');
+      authStorage.clearAuth();
       window.location.href = '/login';
     }
     

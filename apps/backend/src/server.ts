@@ -7,6 +7,7 @@ import routes from './routes/index.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 import { notFound } from './middlewares/notFound.js';
 import { checkPostgresConnection } from './utils/postgresClient.js';
+import { SECURITY_CONFIG, validateSecurityConfig, logSecurityEvent, testSecurityConfig } from './config/security.js';
 
 // Carregar variáveis de ambiente
 dotenv.config();
@@ -15,13 +16,47 @@ const app = express();
 const PORT = process.env['PORT'] || 3001;
 const API_PREFIX = process.env['API_PREFIX'] || '/api/v1';
 
+// Validar e testar configurações de segurança na inicialização
+const securityValid = validateSecurityConfig();
+if (!securityValid) {
+  logSecurityEvent('WARNING', 'Configurações de segurança incompletas detectadas');
+}
+
+// Testar configurações em desenvolvimento
+if (process.env['NODE_ENV'] === 'development') {
+  testSecurityConfig();
+}
+
 // Middlewares de segurança e logging
-app.use(helmet());
-app.use(morgan('combined'));
-app.use(cors({
-  origin: process.env['CORS_ORIGIN'] || 'http://localhost:8080',
-  credentials: true
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
 }));
+
+// Aplicar headers de segurança customizados
+Object.entries(SECURITY_CONFIG.HEADERS).forEach(([header, value]) => {
+  app.use((req, res, next) => {
+    res.setHeader(header, value);
+    next();
+  });
+});
+
+app.use(morgan('combined'));
+
+// Configuração de CORS mais robusta para produção
+const corsOptions = {
+  origin: SECURITY_CONFIG.CORS.ORIGIN,
+  credentials: SECURITY_CONFIG.CORS.CREDENTIALS,
+  optionsSuccessStatus: 200 // Para compatibilidade com alguns navegadores
+};
+
+app.use(cors(corsOptions));
 
 // Middleware para parsing de JSON
 app.use(express.json({ limit: '10mb' }));
@@ -29,15 +64,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotas da API
 app.use(API_PREFIX, routes);
-
-// Health check deve vir ANTES do notFound e errorHandler!
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'API está funcionando',
-    timestamp: new Date().toISOString()
-  });
-});
 
 // Middleware para rotas não encontradas
 app.use(notFound);

@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "build:prod": "tsc && npm run type-check",
     "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
     "lint": "eslint src --ext .ts",
     "type-check": "tsc --noEmit"
   },

@@ -115,7 +115,7 @@ export class TradeService {
             `, [participant.id]);
 
             // Formatar assets
-            const assets = assetsResult.rows.map(asset => {
+            const assets = assetsResult.rows.map((asset: any) => {
               if (asset.asset_type === 'player') {
                 return {
                   asset_type: 'player',

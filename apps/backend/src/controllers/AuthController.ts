@@ -20,4 +20,23 @@ export class AuthController {
       data: result
     });
   });
+
+  static refreshToken = asyncHandler(async (req: Request, res: Response) => {
+    // Os dados já foram validados pelo middleware validateRefreshToken
+    const refreshUser = (req as any).refreshUser;
+    
+    if (!refreshUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Dados de refresh inválidos' 
+      });
+    }
+
+    const result = await AuthService.refreshToken(refreshUser.id, refreshUser.refreshToken);
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+  });
 }

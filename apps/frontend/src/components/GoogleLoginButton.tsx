@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { AUTH_CONFIG, GoogleLoginResponse, GoogleCredentialResponse } from "@/lib/auth";
+import { AUTH_CONFIG, GoogleLoginResponse, GoogleCredentialResponse, authStorage } from "@/lib/auth";
 
 // Declarações de tipo para o Google SDK
 declare global {
@@ -50,10 +50,8 @@ const GoogleLoginButton = () => {
         if (data.error) {
           alert("Erro na autenticação: " + data.error);
         } else {
-
-          // Salvar token no localStorage
-          localStorage.setItem('authToken', data.data.token);
-          localStorage.setItem('user', JSON.stringify(data.data.user));
+          // Salvar dados de autenticação usando o novo sistema de cache
+          authStorage.saveAuth(data.data);
               
           // Sua lógica de redirecionamento com base no time
           if (!data.data.user.teamId) {
