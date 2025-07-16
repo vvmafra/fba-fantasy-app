@@ -13,7 +13,7 @@ import { SECURITY_CONFIG, validateSecurityConfig, logSecurityEvent, testSecurity
 dotenv.config();
 
 const app = express();
-const PORT = process.env['PORT'] || 3001;
+const PORT = process.env['PORT'] || (process.env['NODE_ENV'] === 'production' ? 10000 : 3001);
 const API_PREFIX = process.env['API_PREFIX'] || '/api/v1';
 
 // Validar e testar configurações de segurança na inicialização
@@ -64,6 +64,17 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rotas da API
 app.use(API_PREFIX, routes);
+
+// Health check na raiz para o Render (deve vir ANTES do notFound)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'API está funcionando',
+    timestamp: new Date().toISOString(),
+    environment: process.env['NODE_ENV'] || 'development',
+    port: PORT
+  });
+});
 
 // Middleware para rotas não encontradas
 app.use(notFound);

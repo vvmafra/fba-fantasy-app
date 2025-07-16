@@ -11,6 +11,9 @@ export const apiClient = axios.create({
   },
 });
 
+// Log da URL base para debug
+console.log('🔗 API Client configurado com URL:', config.apiUrl);
+
 // Interceptor para requisições
 apiClient.interceptors.request.use(
   async (config) => {

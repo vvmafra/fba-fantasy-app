@@ -20,7 +20,7 @@ export const SECURITY_CONFIG = {
 
   // Configurações de CORS
   CORS: {
-    ORIGIN: process.env['CORS_ORIGIN'] || (process.env['NODE_ENV'] === 'production' ? false : 'http://localhost:3000'),
+    ORIGIN: process.env['CORS_ORIGIN'] || (process.env['NODE_ENV'] === 'production' ? false : ['http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:8080']),
     CREDENTIALS: true,
   },
 
