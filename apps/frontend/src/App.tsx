@@ -114,14 +114,14 @@ const App = () => (
       </BrowserRouter>
       
       {/* Componentes PWA */}
-      <PWAInstallPrompt />
+      {/* <PWAInstallPrompt /> */}
       <OfflineIndicator />
       
       {/* Componente de debug - remover em produção */}
-      {import.meta.env.DEV && <ConnectionTest />}
+      {/* {import.meta.env.DEV && <ConnectionTest />} */}
       
       {/* Componente para atualizar ícone no iOS */}
-      <PWAUpdatePrompt />
+      {/* <PWAUpdatePrompt /> */}
     </TooltipProvider>
   </QueryClientProvider>
 );
