@@ -510,10 +510,10 @@ export class TradeService {
         const participantsResult = await client.query(`
           SELECT id FROM trade_participants WHERE trade_id = $1
         `, [tradeId]);
-        const participantIds = participantsResult.rows.map(r => r.id);
+        const participantIds = participantsResult.rows.map((r: any) => r.id);
         if (participantIds.length === 2) {
           // O destino é o outro participante
-          toParticipantId = participantIds.find(id => id !== asset.participant_id);
+          toParticipantId = participantIds.find((id: number) => id !== asset.participant_id);
         }
       }
       const toTeamResult = await client.query(`
