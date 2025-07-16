@@ -5,6 +5,7 @@ import { useAuthPersistence } from '@/hooks/useAuthPersistence';
 type User = {
   id: string;
   email: string;
+  name?: string;
   role: string;
   teamId?: string | number; // pode ser string ou number, dependendo do seu uso
   teamData?: any; // dados do time selecionado

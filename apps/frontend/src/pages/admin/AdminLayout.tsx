@@ -7,17 +7,38 @@ import Navigation from '@/components/Navigation';
 import { useTeam } from '@/hooks/useTeams';
 
 const AdminLayout = () => {
-  const { isAdmin, isLoading } = useAuth();
-  const { teamId } = useParams<{ teamId: string }>();
+  const { isAdmin, isLoading, teamId: userTeamId, user } = useAuth();
+  const { teamId: urlTeamId } = useParams<{ teamId: string }>();
   
-  // Buscar dados do time (usando teamId padrão se não estiver em contexto de time)
-  const { data: team } = useTeam(parseInt(teamId || '1'));
+  // Usar teamId da URL se disponível, senão usar o teamId do usuário logado
+  const effectiveTeamId = urlTeamId ? parseInt(urlTeamId) : (userTeamId ? Number(userTeamId) : undefined);
   
-  // Mock user data - será substituído por autenticação real do Supabase
-  const userTeam = team?.data?.name || 'Admin';
-  const userTeamOwner = team?.data?.owner_name || 'Administrador';
+  // Buscar dados do time correto (só se tiver um teamId válido)
+  const { data: team } = useTeam(effectiveTeamId);
+  
+  // Determinar informações do usuário/time
+  let userTeam: string;
+  let userTeamOwner: string;
+  let userTeamLogo: string;
+  
+  if (effectiveTeamId && team?.data) {
+    // Se tem teamId e dados do time, usar os dados do time
+    userTeam = team.data.name;
+    userTeamOwner = team.data.owner_name;
+    userTeamLogo = team.data.logo_path;
+  } else if (user?.teamData) {
+    // Se tem dados do time no contexto de autenticação
+    userTeam = user.teamData.name;
+    userTeamOwner = user.teamData.owner_name;
+    userTeamLogo = user.teamData.logo_path;
+  } else {
+    // Fallback para admin sem time específico
+    userTeam = 'Administrador';
+    userTeamOwner = user?.name || user?.email || 'Admin';
+    userTeamLogo = 'default-logo.png';
+  }
+  
   const [notifications] = React.useState(0);
-  const userTeamLogo = team?.data?.logo_path || 'default-logo.png';
 
   // Se ainda está carregando, mostra loading
   if (isLoading) {
