@@ -97,5 +97,11 @@
       "protocol": "web+fba",
       "url": "/?action=%s"
     }
-  ]
+  ],
+  "permissions": [
+    "identity"
+  ],
+  "prefer_related_applications": false,
+  "display_override": ["standalone", "minimal-ui"],
+  "handle_links": "preferred"
 } 

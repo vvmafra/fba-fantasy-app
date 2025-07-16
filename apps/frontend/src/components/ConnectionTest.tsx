@@ -1,90 +1,127 @@
-import React, { useState, useEffect } from 'react';
-import { apiRequest } from '@/lib/api';
-import { config } from '@/lib/config';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { authStorage } from '@/lib/auth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
-export const ConnectionTest: React.FC = () => {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [message, setMessage] = useState('');
-  const [details, setDetails] = useState<any>(null);
+const ConnectionTest = () => {
+  const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [authStatus, setAuthStatus] = useState<any>(null);
+  const { user, isLoading } = useAuth();
 
-  const testConnection = async () => {
-    setStatus('loading');
-    setMessage('Testando conexão...');
-    
+  useEffect(() => {
+    checkConnection();
+    checkAuthStatus();
+  }, [user]);
+
+  const checkConnection = async () => {
     try {
-      console.log('🔗 Testando conexão com:', config.apiUrl);
-      
-      const response = await apiRequest.get('/health');
-      
-      setStatus('success');
-      setMessage('✅ Conexão estabelecida com sucesso!');
-      setDetails(response);
-      
-      console.log('✅ Resposta do servidor:', response);
-    } catch (error: any) {
-      setStatus('error');
-      setMessage('❌ Erro ao conectar com o servidor');
-      setDetails({
-        error: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        url: config.apiUrl
+      const response = await fetch('/api/health', { 
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       });
-      
-      console.error('❌ Erro de conexão:', error);
+      setStatus(response.ok ? 'online' : 'offline');
+    } catch (error) {
+      setStatus('offline');
     }
   };
 
-  useEffect(() => {
-    // Testar conexão automaticamente ao montar o componente
-    testConnection();
-  }, []);
+  const checkAuthStatus = () => {
+    const authInfo = {
+      hasValidAuth: authStorage.hasValidAuth(),
+      isTokenExpired: authStorage.isTokenExpired(),
+      token: authStorage.getToken() ? 'Presente' : 'Ausente',
+      refreshToken: authStorage.getRefreshToken() ? 'Presente' : 'Ausente',
+      user: authStorage.getUser(),
+      userId: authStorage.getUserId(),
+      localStorageAvailable: (() => {
+        try {
+          const test = '__test__';
+          localStorage.setItem(test, test);
+          localStorage.removeItem(test);
+          return true;
+        } catch {
+          return false;
+        }
+      })()
+    };
+    setAuthStatus(authInfo);
+  };
+
+  const clearAuth = () => {
+    authStorage.clearAuth();
+    checkAuthStatus();
+  };
 
   return (
-    <div className="p-4 border rounded-lg bg-gray-50">
-      <h3 className="text-lg font-semibold mb-4">🔗 Teste de Conexão</h3>
-      
-      <div className="space-y-2">
-        <div>
-          <strong>URL da API:</strong> {config.apiUrl}
-        </div>
-        
-        <div>
-          <strong>Status:</strong> 
-          <span className={`ml-2 px-2 py-1 rounded text-sm ${
-            status === 'loading' ? 'bg-yellow-100 text-yellow-800' :
-            status === 'success' ? 'bg-green-100 text-green-800' :
-            status === 'error' ? 'bg-red-100 text-red-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
-            {status === 'idle' && 'Aguardando...'}
-            {status === 'loading' && 'Testando...'}
-            {status === 'success' && 'Conectado'}
-            {status === 'error' && 'Erro'}
-          </span>
-        </div>
-        
-        <div>
-          <strong>Mensagem:</strong> {message}
-        </div>
-        
-        {details && (
-          <div>
-            <strong>Detalhes:</strong>
-            <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
-              {JSON.stringify(details, null, 2)}
-            </pre>
+    <div className="fixed bottom-4 right-4 z-50">
+      <Card className="w-80">
+        <CardHeader>
+          <CardTitle className="text-sm">Status do Sistema</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Conexão:</span>
+            <Badge variant={status === 'online' ? 'default' : 'destructive'}>
+              {status === 'checking' ? 'Verificando...' : status === 'online' ? 'Online' : 'Offline'}
+            </Badge>
           </div>
-        )}
-        
-        <button
-          onClick={testConnection}
-          disabled={status === 'loading'}
-          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-        >
-          {status === 'loading' ? 'Testando...' : 'Testar Novamente'}
-        </button>
-      </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Auth Context:</span>
+            <Badge variant={user ? 'default' : 'secondary'}>
+              {isLoading ? 'Carregando...' : user ? 'Logado' : 'Deslogado'}
+            </Badge>
+          </div>
+
+          {authStatus && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Auth Válida:</span>
+                <Badge variant={authStatus.hasValidAuth ? 'default' : 'destructive'}>
+                  {authStatus.hasValidAuth ? 'Sim' : 'Não'}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-xs">Token Expirado:</span>
+                <Badge variant={authStatus.isTokenExpired ? 'destructive' : 'default'}>
+                  {authStatus.isTokenExpired ? 'Sim' : 'Não'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-xs">localStorage:</span>
+                <Badge variant={authStatus.localStorageAvailable ? 'default' : 'destructive'}>
+                  {authStatus.localStorageAvailable ? 'Disponível' : 'Indisponível'}
+                </Badge>
+              </div>
+
+              {authStatus.user && (
+                <div className="text-xs text-muted-foreground">
+                  <div>Usuário: {authStatus.user.email}</div>
+                  <div>Time ID: {authStatus.user.teamId || 'Nenhum'}</div>
+                </div>
+              )}
+            </>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <Button size="sm" onClick={checkConnection} variant="outline">
+              Testar Conexão
+            </Button>
+            <Button size="sm" onClick={checkAuthStatus} variant="outline">
+              Verificar Auth
+            </Button>
+            <Button size="sm" onClick={clearAuth} variant="destructive">
+              Limpar Auth
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}; 
+};
+
+export default ConnectionTest; 

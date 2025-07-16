@@ -1,11 +1,10 @@
-const CACHE_NAME = 'fba-cache-v1';
+const CACHE_NAME = 'fba-cache-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/logo.png',
+  '/logo-red.png',
   '/favicon.ico',
   '/favicon2.ico',
-  '/logo-red.png',
 ];
 
 // Instalação do Service Worker
@@ -75,8 +74,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   const options = {
     body: event.data ? event.data.text() : 'Nova notificação do FBA!',
-    icon: '/logo.png',
-    badge: '/logo.png',
+    icon: '/logo-red.png',
+    badge: '/logo-red.png',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -86,12 +85,12 @@ self.addEventListener('push', (event) => {
       {
         action: 'explore',
         title: 'Ver',
-        icon: '/logo.png'
+        icon: '/logo-red.png'
       },
       {
         action: 'close',
         title: 'Fechar',
-        icon: '/logo.png'
+        icon: '/logo-red.png'
       }
     ]
   };

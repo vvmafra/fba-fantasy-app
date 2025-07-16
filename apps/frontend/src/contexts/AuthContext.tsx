@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authStorage, ensureValidToken } from '@/lib/auth';
+import { useAuthPersistence } from '@/hooks/useAuthPersistence';
 
 type User = {
   id: string;
@@ -36,26 +37,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Usar o hook de persistência
+  useAuthPersistence();
+
   // Função para verificar autenticação
   const checkAuth = async (): Promise<boolean> => {
     try {
+      console.log('🔍 Verificando autenticação...');
+      
+      // Primeiro, verificar se há dados no localStorage
+      const hasStoredAuth = authStorage.hasValidAuth();
+      console.log('📦 Dados de auth no localStorage:', hasStoredAuth);
+      
+      if (!hasStoredAuth) {
+        console.log('❌ Sem dados de autenticação válidos');
+        return false;
+      }
+
+      // Verificar se o token está expirado e tentar renovar
       const isValid = await ensureValidToken();
+      console.log('✅ Token válido:', isValid);
+      
       if (isValid) {
         const userData = authStorage.getUser();
         if (userData) {
+          console.log('👤 Usuário encontrado:', userData.email);
           setUser(userData);
           return true;
         }
       }
+      
+      console.log('❌ Falha na verificação de autenticação');
       return false;
     } catch (error) {
-      console.error('Erro ao verificar autenticação:', error);
+      console.error('🚨 Erro ao verificar autenticação:', error);
       return false;
     }
   };
 
   // Função para logout
   const logout = () => {
+    console.log('🚪 Fazendo logout...');
     authStorage.clearAuth();
     setUser(null);
     window.location.href = '/';
@@ -64,9 +86,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Verificar autenticação na inicialização
   useEffect(() => {
     const initializeAuth = async () => {
+      console.log('🚀 Inicializando autenticação...');
       setIsLoading(true);
-      await checkAuth();
-      setIsLoading(false);
+      
+      try {
+        await checkAuth();
+      } catch (error) {
+        console.error('🚨 Erro na inicialização da autenticação:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     initializeAuth();
@@ -82,15 +111,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('userTeamChanged', handleUserTeamChanged as EventListener);
   }, []);
 
-  // Verificar token periodicamente (a cada 5 minutos)
+  // Verificar token periodicamente (a cada 10 minutos em vez de 5)
   useEffect(() => {
     const interval = setInterval(async () => {
       if (user) {
+        console.log('⏰ Verificação periódica de autenticação...');
         await checkAuth();
       }
-    }, 5 * 60 * 1000); // 5 minutos
+    }, 10 * 60 * 1000); // 10 minutos
 
     return () => clearInterval(interval);
+  }, [user]);
+
+  // Listener para quando a aplicação volta ao foco (útil para PWA)
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && user) {
+        console.log('👁️ Aplicação voltou ao foco, verificando autenticação...');
+        await checkAuth();
+      }
+    };
+
+    const handleFocus = async () => {
+      if (user) {
+        console.log('🎯 Janela ganhou foco, verificando autenticação...');
+        await checkAuth();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   const updateUserTeam = (teamId: string | number, teamData?: any) => {

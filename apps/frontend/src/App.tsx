@@ -24,6 +24,8 @@ import SeasonsPage from "./pages/admin/SeasonsPage";
 import RostersSeasonPage from "./pages/admin/RostersSeasonPage";
 import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
+import ConnectionTest from "./components/ConnectionTest";
+import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
@@ -44,10 +46,8 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     const checkAuthentication = async () => {
       if (!isLoading && !user) {
         const isAuthenticated = await checkAuth();
-        if (isAuthenticated) {
-          // Se o usuário está autenticado mas não tem dados carregados, recarregar a página
-          window.location.reload();
-        }
+        // Removido o window.location.reload() que causava problemas
+        // O AuthContext já atualiza o estado do usuário automaticamente
       }
     };
 
@@ -106,6 +106,12 @@ const App = () => (
       {/* Componentes PWA */}
       <PWAInstallPrompt />
       <OfflineIndicator />
+      
+      {/* Componente de debug - remover em produção */}
+      {import.meta.env.DEV && <ConnectionTest />}
+      
+      {/* Componente para atualizar ícone no iOS */}
+      <PWAUpdatePrompt />
     </TooltipProvider>
   </QueryClientProvider>
 );
