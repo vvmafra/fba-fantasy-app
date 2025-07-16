@@ -536,7 +536,7 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
     }
   }
 
-  // Verificar se o usuário tem acesso (apenas dono do time)
+  // Verificar se o usuário tem acesso (apenas dono do time OU admin)
   if (!isAdmin) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -550,7 +550,7 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
           <div className="text-center py-8">
             <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              Apenas o dono do time pode gerenciar o roster da temporada.
+              Apenas o dono do time ou administradores podem gerenciar o roster da temporada.
             </p>
           </div>
           <DialogFooter>

@@ -457,3 +457,285 @@ export const authenticateAndRequireTeamEditPermission = (req: Request, res: Resp
     requireTeamEditPermission(req, res, next);
   });
 }; 
+
+// Middleware para verificar permissões de roster
+// Admins podem criar/editar qualquer roster, donos só podem criar/editar rosters do seu time
+export const requireRosterPermission = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const teamId = parseInt(req.body.team_id || req.params['team_id'] || '0');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuário não autenticado' 
+      });
+    }
+
+    // Se for admin, permitir tudo
+    if (user.role === 'admin') {
+      return next();
+    }
+
+    if (!teamId || teamId === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID do time é obrigatório' 
+      });
+    }
+
+    // Buscar o time no banco para verificar o owner_id
+    const { rows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [teamId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Time não encontrado' 
+      });
+    }
+
+    const teamOwnerId = rows[0].owner_id;
+    const userId = parseInt(user.id);
+
+    // Verificar se o usuário é o dono do time
+    if (teamOwnerId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Acesso negado. Apenas o dono do time pode criar/editar rosters.' 
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Erro no middleware requireRosterPermission:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor' 
+    });
+  }
+};
+
+// Middleware combinado: autenticação + permissão de roster
+export const authenticateAndRequireRosterPermission = (req: Request, res: Response, next: NextFunction) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    requireRosterPermission(req, res, next);
+  });
+};
+
+// Middleware para verificar permissões de roster por ID (para edição/deleção)
+export const requireRosterOwnership = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const rosterId = parseInt(req.params['id'] || '0');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuário não autenticado' 
+      });
+    }
+
+    if (!rosterId || rosterId === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID do roster é obrigatório' 
+      });
+    }
+
+    // Se for admin, permitir tudo
+    if (user.role === 'admin') {
+      return next();
+    }
+
+    // Buscar o roster para verificar o team_id
+    const { rows } = await pool.query('SELECT team_id FROM roster_season WHERE id = $1', [rosterId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Roster não encontrado' 
+      });
+    }
+
+    const rosterTeamId = rows[0].team_id;
+    
+    // Buscar o time para verificar o owner_id
+    const { rows: teamRows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [rosterTeamId]);
+    
+    if (teamRows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Time do roster não encontrado' 
+      });
+    }
+
+    const teamOwnerId = teamRows[0].owner_id;
+    const userId = parseInt(user.id);
+
+    // Verificar se o usuário é o dono do time que possui o roster
+    if (teamOwnerId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Acesso negado. Apenas o dono do time pode editar/deletar este roster.' 
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Erro no middleware requireRosterOwnership:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor' 
+    });
+  }
+};
+
+// Middleware combinado: autenticação + ownership do roster
+export const authenticateAndRequireRosterOwnership = (req: Request, res: Response, next: NextFunction) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    requireRosterOwnership(req, res, next);
+  });
+};
+
+// Middleware para verificar permissões de roster playoffs
+// Admins podem criar/editar qualquer roster playoffs, donos só podem criar/editar rosters playoffs do seu time
+export const requireRosterPlayoffsPermission = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const teamId = parseInt(req.body.team_id || req.params['team_id'] || '0');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuário não autenticado' 
+      });
+    }
+
+    // Se for admin, permitir tudo
+    if (user.role === 'admin') {
+      return next();
+    }
+
+    if (!teamId || teamId === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID do time é obrigatório' 
+      });
+    }
+
+    // Buscar o time no banco para verificar o owner_id
+    const { rows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [teamId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Time não encontrado' 
+      });
+    }
+
+    const teamOwnerId = rows[0].owner_id;
+    const userId = parseInt(user.id);
+
+    // Verificar se o usuário é o dono do time
+    if (teamOwnerId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Acesso negado. Apenas o dono do time pode criar/editar rosters playoffs.' 
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Erro no middleware requireRosterPlayoffsPermission:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor' 
+    });
+  }
+};
+
+// Middleware combinado: autenticação + permissão de roster playoffs
+export const authenticateAndRequireRosterPlayoffsPermission = (req: Request, res: Response, next: NextFunction) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    requireRosterPlayoffsPermission(req, res, next);
+  });
+};
+
+// Middleware para verificar permissões de roster playoffs por ID (para edição/deleção)
+export const requireRosterPlayoffsOwnership = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = (req as any).user;
+    const rosterId = parseInt(req.params['id'] || '0');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuário não autenticado' 
+      });
+    }
+
+    if (!rosterId || rosterId === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID do roster playoffs é obrigatório' 
+      });
+    }
+
+    // Se for admin, permitir tudo
+    if (user.role === 'admin') {
+      return next();
+    }
+
+    // Buscar o roster playoffs para verificar o team_id
+    const { rows } = await pool.query('SELECT team_id FROM roster_playoffs WHERE id = $1', [rosterId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Roster playoffs não encontrado' 
+      });
+    }
+
+    const rosterTeamId = rows[0].team_id;
+    
+    // Buscar o time para verificar o owner_id
+    const { rows: teamRows } = await pool.query('SELECT owner_id FROM teams WHERE id = $1', [rosterTeamId]);
+    
+    if (teamRows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Time do roster playoffs não encontrado' 
+      });
+    }
+
+    const teamOwnerId = teamRows[0].owner_id;
+    const userId = parseInt(user.id);
+
+    // Verificar se o usuário é o dono do time que possui o roster playoffs
+    if (teamOwnerId !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Acesso negado. Apenas o dono do time pode editar/deletar este roster playoffs.' 
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error('Erro no middleware requireRosterPlayoffsOwnership:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Erro interno do servidor' 
+    });
+  }
+};
+
+// Middleware combinado: autenticação + ownership do roster playoffs
+export const authenticateAndRequireRosterPlayoffsOwnership = (req: Request, res: Response, next: NextFunction) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    requireRosterPlayoffsOwnership(req, res, next);
+  });
+}; 

@@ -279,7 +279,7 @@ export default function RostersSeasonPage() {
       {/* Tabela de Rotações Manuais */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Users className="h-5 w-5" />
             Rotações Manuais ({manualRosters.length})
             {manualRosters.length > 0 && (
@@ -296,7 +296,7 @@ export default function RostersSeasonPage() {
         </CardHeader>
         <CardContent>
           {manualRosters.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-lg">
               Nenhum roster manual encontrado
             </div>
           ) : (
@@ -405,7 +405,7 @@ export default function RostersSeasonPage() {
       {/* Tabela de Rotações Automáticas */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <Users className="h-5 w-5" />
             Rotações Automáticas ({automaticRosters.length})
             {automaticRosters.length > 0 && (
@@ -422,7 +422,7 @@ export default function RostersSeasonPage() {
         </CardHeader>
         <CardContent>
           {automaticRosters.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-muted-foreground text-lg">
               Nenhum roster automático encontrado
             </div>
           ) : (

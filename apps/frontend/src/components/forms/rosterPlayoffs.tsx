@@ -513,7 +513,7 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
     }
   }
 
-  // Verificar se o usuário tem acesso (apenas dono do time)
+  // Verificar se o usuário tem acesso (apenas dono do time OU admin)
   if (!isAdmin) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
@@ -527,7 +527,7 @@ export function RosterPlayoffsForm({ isOpen, onClose, teamId, seasonId, isAdmin,
           <div className="text-center py-8">
             <UserX className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              Apenas o dono do time pode gerenciar o roster playoffs.
+              Apenas o dono do time ou administradores podem gerenciar o roster playoffs.
             </p>
           </div>
           <DialogFooter>

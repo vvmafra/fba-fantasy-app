@@ -63,6 +63,25 @@ export class AuthService {
     }
   }
 
+  // Buscar usuário por ID
+  static async getUserById(userId: number): Promise<any | null> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        `SELECT u.*, t.id AS "teamId"
+         FROM users u
+         LEFT JOIN teams t ON t.owner_id = u.id
+         WHERE u.id = $1`,
+        [userId]
+      );
+
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Buscar usuário por Google ID
   static async findUserByGoogleId(googleId: string): Promise<any | null> {
     try {

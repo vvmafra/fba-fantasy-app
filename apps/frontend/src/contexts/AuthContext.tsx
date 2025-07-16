@@ -17,6 +17,7 @@ type AuthContextType = {
   isLoading: boolean;
   teamId: string | number | undefined;
   updateUserTeam: (teamId: string | number, teamData?: any) => void;
+  refreshUserData: () => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
 };
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   teamId: undefined,
   updateUserTeam: () => {},
+  refreshUserData: async () => {},
   logout: () => {},
   checkAuth: async () => false,
 });
@@ -39,6 +41,49 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Usar o hook de persistência
   useAuthPersistence();
+
+  // Função para buscar dados atualizados do usuário do servidor
+  const refreshUserData = async (): Promise<void> => {
+    try {
+      console.log('🔄 Atualizando dados do usuário...');
+      
+      const token = authStorage.getToken();
+      if (!token) {
+        console.log('❌ Sem token para atualizar dados');
+        return;
+      }
+
+      // Fazer requisição para buscar dados atualizados do usuário
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/v1/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          console.log('✅ Dados do usuário atualizados:', data.data);
+          
+          // Atualizar dados no localStorage
+          const currentUserData = authStorage.getUser();
+          if (currentUserData) {
+            const updatedUserData = { ...currentUserData, ...data.data };
+            localStorage.setItem('user', JSON.stringify(updatedUserData));
+            
+            // Atualizar estado
+            setUser(updatedUserData);
+          }
+        }
+      } else {
+        console.log('❌ Falha ao atualizar dados do usuário:', response.status);
+      }
+    } catch (error) {
+      console.error('🚨 Erro ao atualizar dados do usuário:', error);
+    }
+  };
 
   // Função para verificar autenticação
   const checkAuth = async (): Promise<boolean> => {
@@ -63,6 +108,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userData) {
           console.log('👤 Usuário encontrado:', userData.email);
           setUser(userData);
+          
+          // Verificar se os dados do usuário estão atualizados
+          await refreshUserData();
+          
           return true;
         }
       }
@@ -173,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         teamId: user?.teamId,
         updateUserTeam,
+        refreshUserData,
         logout,
         checkAuth,
       }}

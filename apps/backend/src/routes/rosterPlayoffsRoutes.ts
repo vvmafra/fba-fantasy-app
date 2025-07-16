@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import { RosterPlayoffsController } from '../controllers/rosterPlayoffsController.js';
 import { validate, validateWithParams } from '../middlewares/validation.js';
-import { authenticateAndRequireAdmin } from '../middlewares/auth.js';
+import { 
+  authenticateAndRequireAdmin,
+  authenticateAndRequireRosterPlayoffsPermission,
+  authenticateAndRequireRosterPlayoffsOwnership
+} from '../middlewares/auth.js';
 import { 
   createRosterPlayoffsSchema, 
   updateRosterPlayoffsSchema, 
@@ -18,11 +22,11 @@ router.get('/active', RosterPlayoffsController.getActiveSeasonRoster);
 router.get('/season/:season_id', RosterPlayoffsController.getRosterBySeason);
 router.get('/:id', RosterPlayoffsController.getRosterById);
 
-// Rotas POST (apenas admin)
-router.post('/', authenticateAndRequireAdmin, validate(createRosterPlayoffsSchema), RosterPlayoffsController.createRoster);
+// Rotas POST (admin ou dono do time)
+router.post('/', authenticateAndRequireRosterPlayoffsPermission, validate(createRosterPlayoffsSchema), RosterPlayoffsController.createRoster);
 
-// Rotas PUT (apenas admin)
-router.put('/:id', authenticateAndRequireAdmin, validateWithParams(rosterPlayoffsIdSchema, updateRosterPlayoffsSchema), RosterPlayoffsController.updateRoster);
+// Rotas PUT (admin ou dono do time)
+router.put('/:id', authenticateAndRequireRosterPlayoffsOwnership, validateWithParams(rosterPlayoffsIdSchema, updateRosterPlayoffsSchema), RosterPlayoffsController.updateRoster);
 
 // Rotas DELETE (apenas admin)
 router.delete('/:id', authenticateAndRequireAdmin, RosterPlayoffsController.deleteRoster);

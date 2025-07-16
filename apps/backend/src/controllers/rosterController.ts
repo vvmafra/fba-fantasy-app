@@ -158,16 +158,17 @@ export class RosterController {
 
   // POST /api/v1/roster - Criar novo roster
   static createRoster = asyncHandler(async (req: Request, res: Response) => {
-    const adminUser = (req as any).user; // Admin que fez a requisição
+    const user = (req as any).user; // Usuário que fez a requisição (admin ou dono do time)
     const roster = await RosterService.createRoster(req.body);
     
     res.status(201).json({
       success: true,
       data: roster,
       message: 'Roster criado com sucesso',
-      admin: {
-        id: adminUser.id,
-        email: adminUser.email
+      createdBy: {
+        id: user.id,
+        email: user.email,
+        role: user.role
       }
     });
   });

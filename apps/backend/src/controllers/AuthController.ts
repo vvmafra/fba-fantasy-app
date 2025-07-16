@@ -39,4 +39,30 @@ export class AuthController {
       data: result
     });
   });
+
+  static getCurrentUser = asyncHandler(async (req: Request, res: Response) => {
+    const user = (req as any).user;
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Usuário não autenticado' 
+      });
+    }
+
+    // Buscar dados atualizados do usuário
+    const userData = await AuthService.getUserById(parseInt(user.id));
+    
+    if (!userData) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Usuário não encontrado' 
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: userData
+    });
+  });
 }
