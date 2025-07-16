@@ -28,7 +28,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
       role: decoded.role || 'user' // Extrai a role do token
     };
 
-    next();
+    return next();
   } catch (error) {
     logSecurityEvent('AUTH_FAILED', { 
       reason: 'Token inválido ou expirado', 
@@ -105,7 +105,7 @@ export const validateRefreshToken = async (req: Request, res: Response, next: Ne
       refreshToken
     };
 
-    next();
+    return next();
   } catch (error) {
     logSecurityEvent('REFRESH_TOKEN_ERROR', { 
       reason: 'Erro interno', 
@@ -179,7 +179,7 @@ export const rateLimit = (req: Request, res: Response, next: NextFunction) => {
     currentCount: rateLimitCache.get(key)?.count || 1
   });
   
-  next();
+  return next();
 };
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
@@ -201,7 +201,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
     return;
   }
 
-  next();
+  return next();
 };
 
 // Middleware combinado: autenticação + admin
