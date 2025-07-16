@@ -26,6 +26,8 @@ import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { OfflineIndicator } from "./components/OfflineIndicator";
 import ConnectionTest from "./components/ConnectionTest";
 import PWAUpdatePrompt from "./components/PWAUpdatePrompt";
+import SmartRedirect from "./components/SmartRedirect";
+import LoadingScreen from "./components/LoadingScreen";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 
@@ -45,14 +47,19 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkAuthentication = async () => {
       if (!isLoading && !user) {
+        console.log('🔍 AuthGuard - Verificando autenticação...');
         const isAuthenticated = await checkAuth();
-        // Removido o window.location.reload() que causava problemas
-        // O AuthContext já atualiza o estado do usuário automaticamente
+        console.log('✅ AuthGuard - Verificação concluída:', isAuthenticated);
       }
     };
 
     checkAuthentication();
   }, [user, isLoading, checkAuth]);
+
+  // Se ainda está carregando, mostrar loading elegante
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
 
   return <>{children}</>;
 };
@@ -64,6 +71,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthGuard>
+          {/* Componente de redirecionamento inteligente */}
+          <SmartRedirect />
+          
           <Routes>
             {/* Página de login como rota principal */}
             <Route path="/" element={<LoginPage />} />
