@@ -237,7 +237,7 @@ const TradeProposal = ({ teamId, isAdmin = false, onTradeCreated, canProposeTrad
                     <SelectValue placeholder="Adicionar time" />
                   </SelectTrigger>
                   <SelectContent>
-                    {teams?.data?.map((team) => (
+                    {teams?.data?.sort((a, b) => a.name.localeCompare(b.name)).map((team) => (
                       <SelectItem key={team.id} value={team.id.toString()}>
                         {team.name}
                       </SelectItem>

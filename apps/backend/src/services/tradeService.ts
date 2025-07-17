@@ -13,6 +13,176 @@ import {
 } from '../types';
 
 export class TradeService {
+  // Função auxiliar para buscar assets de um participante
+  private static async getParticipantAssets(participantId: number) {
+    // Primeiro, buscar o trade_id para este participante
+    const tradeResult = await pool.query(`
+      SELECT trade_id FROM trade_participants WHERE id = $1
+    `, [participantId]);
+    
+    if (tradeResult.rows.length === 0) return [];
+    
+    const tradeId = tradeResult.rows[0].trade_id;
+    
+    // Buscar todos os participantes da trade para determinar o destino
+    const participantsResult = await pool.query(`
+      SELECT id, team_id FROM trade_participants WHERE trade_id = $1 ORDER BY id
+    `, [tradeId]);
+    
+    const participants = participantsResult.rows;
+    const isTwoTeamTrade = participants.length === 2;
+    
+    const assetsResult = await pool.query(`
+      SELECT 
+        ta.id as asset_id,
+        ta.participant_id,
+        ta.to_participant_id,
+        ta.asset_type,
+        ta.player_id,
+        ta.pick_id,
+        p.name as player_name,
+        p.position as player_position,
+        p.ovr as player_ovr,
+        pk.round as pick_round,
+        s.year as pick_year,
+        pk.original_team_id as pick_original_team_id,
+        tm_original.name as pick_original_team_name,
+        tm_original.abbreviation as pick_original_team_abbreviation
+      FROM trade_assets ta
+      LEFT JOIN players p ON p.id = ta.player_id
+      LEFT JOIN picks pk ON pk.id = ta.pick_id
+      LEFT JOIN seasons s ON pk.season_id = s.id
+      LEFT JOIN teams tm_original ON tm_original.id = pk.original_team_id
+      WHERE ta.participant_id = $1
+      ORDER BY ta.id
+    `, [participantId]);
+
+    // Buscar informações dos times de destino de uma vez
+    const teamIds = participants.map(p => p.team_id);
+    const teamsResult = await pool.query(`
+      SELECT id, name, abbreviation FROM teams WHERE id = ANY($1)
+    `, [teamIds]);
+    
+    const teamsMap = new Map();
+    teamsResult.rows.forEach(team => {
+      teamsMap.set(team.id, team);
+    });
+
+    return assetsResult.rows.map(asset => {
+      // Determinar o destino do asset
+      let toParticipantId = asset.to_participant_id;
+      let toTeamId = null;
+      let toTeamName = null;
+      let toTeamAbbreviation = null;
+      
+      if (!toParticipantId && isTwoTeamTrade) {
+        // Para trades de 2 times, o destino é o outro participante
+        toParticipantId = participants.find(p => p.id !== participantId)?.id || null;
+      }
+      
+      if (toParticipantId) {
+        const toParticipant = participants.find(p => p.id === toParticipantId);
+        if (toParticipant) {
+          toTeamId = toParticipant.team_id;
+          const toTeam = teamsMap.get(toTeamId);
+          if (toTeam) {
+            toTeamName = toTeam.name;
+            toTeamAbbreviation = toTeam.abbreviation;
+          }
+        }
+      }
+      
+      if (asset.asset_type === 'player') {
+        return {
+          id: asset.asset_id,
+          participant_id: asset.participant_id,
+          to_participant_id: toParticipantId,
+          asset_type: 'player' as const,
+          player_id: asset.player_id,
+          pick_id: null,
+          player: {
+            id: asset.player_id,
+            name: asset.player_name,
+            position: asset.player_position,
+            ovr: asset.player_ovr
+          },
+          pick: null,
+          to_team: toTeamId ? {
+            id: toTeamId,
+            name: toTeamName,
+            abbreviation: toTeamAbbreviation
+          } : null
+        };
+      } else {
+        return {
+          id: asset.asset_id,
+          participant_id: asset.participant_id,
+          to_participant_id: toParticipantId,
+          asset_type: 'pick' as const,
+          player_id: null,
+          pick_id: asset.pick_id,
+          player: null,
+          pick: {
+            id: asset.pick_id,
+            year: asset.pick_year,
+            round: asset.pick_round,
+            original_team_id: asset.pick_original_team_id,
+            original_team_name: asset.pick_original_team_name,
+            original_team_abbreviation: asset.pick_original_team_abbreviation
+          },
+          to_team: toTeamId ? {
+            id: toTeamId,
+            name: toTeamName,
+            abbreviation: toTeamAbbreviation
+          } : null
+        };
+      }
+    });
+  }
+
+  // Função auxiliar para buscar trades com detalhes completos
+  private static async getTradeWithDetails(trade: any) {
+    // Buscar participantes da trade
+    const participantsResult = await pool.query(`
+      SELECT 
+        tp.id,
+        tp.team_id,
+        tp.is_initiator,
+        tp.response_status,
+        tm.name as team_name,
+        tm.abbreviation as team_abbreviation
+      FROM trade_participants tp
+      JOIN teams tm ON tm.id = tp.team_id
+      WHERE tp.trade_id = $1
+      ORDER BY tp.id
+    `, [trade.id]);
+
+    // Para cada participante, buscar seus assets
+    const participantsWithAssets = await Promise.all(
+      participantsResult.rows.map(async (participant) => {
+        const assets = await this.getParticipantAssets(participant.id);
+
+        return {
+          id: participant.id,
+          team_id: participant.team_id,
+          is_initiator: participant.is_initiator,
+          response_status: participant.response_status,
+          team: {
+            id: participant.team_id,
+            name: participant.team_name,
+            abbreviation: participant.team_abbreviation
+          },
+          assets
+        };
+      })
+    );
+
+    return {
+      ...trade,
+      participants: participantsWithAssets
+    };
+  }
+
   // Buscar todas as trades com filtros
   static async getAllTrades(params: TradeQueryParams = {}): Promise<Trade[]> {
     const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc', ...filters } = params;
@@ -46,6 +216,11 @@ export class TradeService {
       values.push(filters.created_by_team);
     }
     
+    if (filters.made !== undefined) {
+      whereClause += ` AND t.made = $${valueIndex++}`;
+      values.push(filters.made);
+    }
+    
     const sql = `
       SELECT t.*
       FROM trades t
@@ -57,126 +232,10 @@ export class TradeService {
     values.push(limit, offset);
     const { rows } = await pool.query(sql, values);
     
-    // Para cada trade, buscar os participantes completos (mesma estrutura do getTradesByTeam)
+    // Para cada trade, buscar os participantes completos usando a função auxiliar
     const tradesWithDetails = await Promise.all(
       rows.map(async (trade) => {
-        // Buscar participantes da trade
-        const participantsResult = await pool.query(`
-          SELECT 
-            tp.id,
-            tp.team_id,
-            tp.is_initiator,
-            tp.response_status,
-            tm.name as team_name,
-            tm.abbreviation as team_abbreviation
-          FROM trade_participants tp
-          JOIN teams tm ON tm.id = tp.team_id
-          WHERE tp.trade_id = $1
-          ORDER BY tp.id
-        `, [trade.id]);
-
-        // Para cada participante, buscar seus assets
-        const participantsWithAssets = await Promise.all(
-          participantsResult.rows.map(async (participant) => {
-            // Buscar assets do participante
-            const assetsResult = await pool.query(`
-              SELECT 
-                ta.asset_type,
-                ta.player_id,
-                ta.pick_id,
-                tam.from_team_id,
-                tam.to_team_id,
-                p.name as player_name,
-                p.position as player_position,
-                p.ovr as player_ovr,
-                s.year as pick_year,
-                pk.round as pick_round,
-                pk.original_team_id,
-                tm_original.name as pick_original_team_name,
-                tm_from.name as from_team_name,
-                tm_from.abbreviation as from_team_abbreviation,
-                tm_to.name as to_team_name,
-                tm_to.abbreviation as to_team_abbreviation,
-                tm_dest.name as to_participant_team_name,
-                tm_dest.abbreviation as to_participant_team_abbreviation
-              FROM trade_assets ta
-              LEFT JOIN players p ON p.id = ta.player_id
-              LEFT JOIN picks pk ON pk.id = ta.pick_id
-              LEFT JOIN seasons s ON s.id = pk.season_id
-              LEFT JOIN teams tm_original ON tm_original.id = pk.original_team_id
-              LEFT JOIN trade_asset_movements tam ON (tam.asset_type = ta.asset_type AND 
-                (tam.asset_id = ta.player_id OR tam.asset_id = ta.pick_id))
-              LEFT JOIN teams tm_from ON tm_from.id = tam.from_team_id
-              LEFT JOIN teams tm_to ON tm_to.id = tam.to_team_id
-              LEFT JOIN trade_participants tp_dest ON tp_dest.id = ta.to_participant_id
-              LEFT JOIN teams tm_dest ON tm_dest.id = tp_dest.team_id
-              WHERE ta.participant_id = $1
-              ORDER BY ta.id
-            `, [participant.id]);
-
-            // Formatar assets
-            const assets = assetsResult.rows.map((asset: any) => {
-              if (asset.asset_type === 'player') {
-                return {
-                  asset_type: 'player',
-                  player_id: asset.player_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  player: {
-                    id: asset.player_id,
-                    name: asset.player_name,
-                    position: asset.player_position,
-                    ovr: asset.player_ovr
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              } else {
-                return {
-                  asset_type: 'pick',
-                  pick_id: asset.pick_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  pick: {
-                    id: asset.pick_id,
-                    year: asset.pick_year,
-                    round: asset.pick_round,
-                    original_team_id: asset.original_team_id,
-                    original_team_name: asset.pick_original_team_name
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              }
-            });
-
-            return {
-              id: participant.id,
-              team_id: participant.team_id,
-              is_initiator: participant.is_initiator,
-              response_status: participant.response_status,
-              team: {
-                id: participant.team_id,
-                name: participant.team_name,
-                abbreviation: participant.team_abbreviation
-              },
-              assets
-            };
-          })
-        );
-
-        return {
-          ...trade,
-          participants: participantsWithAssets
-        };
+        return await this.getTradeWithDetails(trade);
       })
     );
 
@@ -185,105 +244,62 @@ export class TradeService {
 
   // Buscar trade por ID com detalhes completos
   static async getTradeById(id: number): Promise<TradeWithDetails | null> {
-    const { rows } = await pool.query(`
-      SELECT 
-        t.*,
-        tp.id as participant_id,
-        tp.team_id,
-        tp.is_initiator,
-        tp.response_status,
-        tp.responded_at,
-        tm.id as team_id,
-        tm.name as team_name,
-        tm.abbreviation as team_abbreviation,
-        ta.id as asset_id,
-        ta.asset_type,
-        ta.player_id,
-        ta.pick_id,
-        p.name as player_name,
-        p.position as player_position,
-        p.ovr as player_ovr,
-        pk.round as pick_round,
-        pk.year as pick_year,
-        pk.original_team_id as pick_original_team_id
-      FROM trades t
-      LEFT JOIN trade_participants tp ON t.id = tp.trade_id
-      LEFT JOIN teams tm ON tp.team_id = tm.id
-      LEFT JOIN trade_assets ta ON tp.id = ta.participant_id
-      LEFT JOIN players p ON ta.player_id = p.id
-      LEFT JOIN picks pk ON ta.pick_id = pk.id
-      WHERE t.id = $1
-      ORDER BY tp.id, ta.id
+    // 1. Buscar dados básicos da trade
+    const tradeResult = await pool.query(`
+      SELECT * FROM trades WHERE id = $1
     `, [id]);
 
-    if (rows.length === 0) return null;
+    if (tradeResult.rows.length === 0) return null;
 
-    // Estruturar os dados
+    const tradeData = tradeResult.rows[0];
+
+    // 2. Buscar participantes
+    const participantsResult = await pool.query(`
+      SELECT 
+        tp.*,
+        t.name as team_name,
+        t.abbreviation as team_abbreviation
+      FROM trade_participants tp
+      JOIN teams t ON tp.team_id = t.id
+      WHERE tp.trade_id = $1
+      ORDER BY tp.id
+    `, [id]);
+
+    // 3. Buscar assets para cada participante
+    const participants = [];
+    for (const participant of participantsResult.rows) {
+      const assets = await this.getParticipantAssets(participant.id);
+
+      participants.push({
+        id: participant.id,
+        trade_id: participant.trade_id,
+        team_id: participant.team_id,
+        is_initiator: participant.is_initiator,
+        response_status: participant.response_status,
+        responded_at: participant.responded_at,
+        team: {
+          id: participant.team_id,
+          name: participant.team_name,
+          abbreviation: participant.team_abbreviation
+        },
+        assets
+      });
+    }
+
     const trade: TradeWithDetails = {
-      id: rows[0].id,
-      season_id: rows[0].season_id,
-      status: rows[0].status,
-      created_by_team: rows[0].created_by_team,
-      created_at: rows[0].created_at,
-      executed_at: rows[0].executed_at,
-      reverted_at: rows[0].reverted_at,
-      reverted_by_user: rows[0].reverted_by_user,
-      participants: [],
+      id: tradeData.id,
+      season_id: tradeData.season_id,
+      status: tradeData.status,
+      created_by_team: tradeData.created_by_team,
+      created_at: tradeData.created_at,
+      executed_at: tradeData.executed_at,
+      reverted_at: tradeData.reverted_at,
+      reverted_by_user: tradeData.reverted_by_user,
+      participants,
       movements: []
     };
 
-    // Agrupar participantes e assets
-    const participantsMap = new Map();
-    
-    rows.forEach(row => {
-      if (row.participant_id) {
-        if (!participantsMap.has(row.participant_id)) {
-          participantsMap.set(row.participant_id, {
-            id: row.participant_id,
-            trade_id: row.id,
-            team_id: row.team_id,
-            is_initiator: row.is_initiator,
-            response_status: row.response_status,
-            responded_at: row.responded_at,
-            team: {
-              id: row.team_id,
-              name: row.team_name,
-              abbreviation: row.team_abbreviation
-            },
-            assets: []
-          });
-        }
-
-        if (row.asset_id) {
-          const asset = {
-            id: row.asset_id,
-            participant_id: row.participant_id,
-            asset_type: row.asset_type,
-            player_id: row.player_id,
-            pick_id: row.pick_id,
-            player: row.player_id ? {
-              id: row.player_id,
-              name: row.player_name,
-              position: row.player_position,
-              ovr: row.player_ovr
-            } : null,
-            pick: row.pick_id ? {
-              id: row.pick_id,
-              round: row.pick_round,
-              year: row.pick_year,
-              original_team_id: row.pick_original_team_id
-            } : null,
-            to_participant_team_name: row.to_participant_team_name,
-            to_participant_team_abbreviation: row.to_participant_team_abbreviation
-          };
-          participantsMap.get(row.participant_id).assets.push(asset);
-        }
-      }
-    });
-
-    trade.participants = Array.from(participantsMap.values());
-
-    // Buscar movimentos se a trade foi executada
+    // 4. Buscar movimentos se a trade foi executada
     if (trade.status === 'executed' || trade.status === 'reverted') {
       const movementsResult = await pool.query(`
         SELECT 
@@ -367,6 +383,62 @@ export class TradeService {
     }
   }
 
+  // Verificar se um time atingiu o limite de trades
+  static async checkTradeLimit(teamId: number, seasonStart: number, seasonEnd: number): Promise<{ canTrade: boolean; tradesUsed: number; tradesLimit: number }> {
+    const tradesUsed = await this.countExecutedTradesByTeam(teamId, seasonStart, seasonEnd);
+    const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
+    
+    return {
+      canTrade: tradesUsed < tradesLimit,
+      tradesUsed,
+      tradesLimit
+    };
+  }
+
+  // Verificar se todos os participantes de uma trade podem aceitar (não atingiram limite)
+  static async checkAllParticipantsTradeLimit(tradeId: number): Promise<{ canAccept: boolean; participants: Array<{ teamId: number; teamName: string; canTrade: boolean; tradesUsed: number; tradesLimit: number }> }> {
+    // Buscar todos os participantes da trade
+    const participantsResult = await pool.query(`
+      SELECT tp.team_id, t.name as team_name, tr.season_id
+      FROM trade_participants tp
+      JOIN trades tr ON tp.trade_id = tr.id
+      JOIN teams t ON tp.team_id = t.id
+      WHERE tp.trade_id = $1
+    `, [tradeId]);
+    
+    if (participantsResult.rows.length === 0) {
+      throw new Error('Trade não encontrada');
+    }
+    
+    const seasonId = participantsResult.rows[0].season_id;
+    const seasonStart = Math.floor((seasonId - 1) / 2) * 2 + 1;
+    const seasonEnd = seasonStart + 1;
+    
+    const participants = [];
+    let allCanAccept = true;
+    
+    for (const participant of participantsResult.rows) {
+      const tradeLimitCheck = await this.checkTradeLimit(participant.team_id, seasonStart, seasonEnd);
+      
+      participants.push({
+        teamId: participant.team_id,
+        teamName: participant.team_name,
+        canTrade: tradeLimitCheck.canTrade,
+        tradesUsed: tradeLimitCheck.tradesUsed,
+        tradesLimit: tradeLimitCheck.tradesLimit
+      });
+      
+      if (!tradeLimitCheck.canTrade) {
+        allCanAccept = false;
+      }
+    }
+    
+    return {
+      canAccept: allCanAccept,
+      participants
+    };
+  }
+
   // Atualizar resposta de participante
   static async updateParticipantResponse(
     participantId: number, 
@@ -377,19 +449,43 @@ export class TradeService {
     try {
       await client.query('BEGIN');
       
-      // 1. Atualizar participante
+      // 1. Buscar informações do participante e trade
       const participantResult = await client.query(`
-        UPDATE trade_participants 
-        SET response_status = $1, responded_at = NOW()
-        WHERE id = $2
-        RETURNING *
-      `, [responseData.response_status, participantId]);
+        SELECT tp.*, t.season_id 
+        FROM trade_participants tp
+        JOIN trades t ON tp.trade_id = t.id
+        WHERE tp.id = $1
+      `, [participantId]);
       
       if (participantResult.rows.length === 0) {
         throw new Error('Participante não encontrado');
       }
       
       const participant = participantResult.rows[0];
+      const seasonId = participant.season_id;
+      
+      // 2. Verificar limite de trades se estiver tentando aceitar
+      if (responseData.response_status === 'accepted') {
+        // Calcular período atual para limite de trades (a cada 2 temporadas)
+        const seasonStart = Math.floor((seasonId - 1) / 2) * 2 + 1;
+        const seasonEnd = seasonStart + 1;
+        
+        const tradeLimitCheck = await this.checkTradeLimit(participant.team_id, seasonStart, seasonEnd);
+        
+        if (!tradeLimitCheck.canTrade) {
+          throw new Error(`Time atingiu o limite de ${tradeLimitCheck.tradesLimit} trades para o período ${seasonStart}-${seasonEnd}. Trades utilizadas: ${tradeLimitCheck.tradesUsed}`);
+        }
+      }
+      
+      // 3. Atualizar participante
+      const updateResult = await client.query(`
+        UPDATE trade_participants 
+        SET response_status = $1, responded_at = NOW()
+        WHERE id = $2
+        RETURNING *
+      `, [responseData.response_status, participantId]);
+      
+      const updatedParticipant = updateResult.rows[0];
       
       // Após atualizar o participante:
       if (responseData.response_status === 'rejected') {
@@ -398,9 +494,9 @@ export class TradeService {
           UPDATE trades 
           SET status = 'cancelled'
           WHERE id = $1
-        `, [participant.trade_id]);
+        `, [updatedParticipant.trade_id]);
         await client.query('COMMIT');
-        return participant;
+        return updatedParticipant;
       }
       
       // 2. Verificar se todos os participantes responderam
@@ -408,7 +504,7 @@ export class TradeService {
         SELECT response_status 
         FROM trade_participants 
         WHERE trade_id = $1
-      `, [participant.trade_id]);
+      `, [updatedParticipant.trade_id]);
       
       const allParticipants = allParticipantsResult.rows;
       const allResponded = allParticipants.every(p => p.response_status !== 'pending');
@@ -429,15 +525,15 @@ export class TradeService {
             UPDATE trades 
             SET status = 'pending'
             WHERE id = $1
-          `, [participant.trade_id]);
+          `, [updatedParticipant.trade_id]);
           
           // Executar a trade automaticamente
-          await this.executeTradeInternal(client, participant.trade_id);
+          await this.executeTradeInternal(client, updatedParticipant.trade_id);
         }
       }
       
       await client.query('COMMIT');
-      return participant;
+      return updatedParticipant;
       
     } catch (error) {
       await client.query('ROLLBACK');
@@ -613,6 +709,13 @@ export class TradeService {
         WHERE id = $2
         RETURNING *
       `, [revertedByUser, tradeId]);
+
+      // 5. Atualizar campo made da trade
+      await client.query(`
+        UPDATE trades 
+        SET made = false
+        WHERE id = $1
+      `, [tradeId]);
       
       await client.query('COMMIT');
       return updatedTradeResult.rows[0];
@@ -649,123 +752,7 @@ export class TradeService {
     // Para cada trade, buscar os participantes completos
     const tradesWithDetails = await Promise.all(
       rows.map(async (trade) => {
-        // Buscar participantes da trade
-        const participantsResult = await pool.query(`
-          SELECT 
-            tp.id,
-            tp.team_id,
-            tp.is_initiator,
-            tp.response_status,
-            tm.name as team_name,
-            tm.abbreviation as team_abbreviation
-          FROM trade_participants tp
-          JOIN teams tm ON tm.id = tp.team_id
-          WHERE tp.trade_id = $1
-          ORDER BY tp.id
-        `, [trade.id]);
-
-        // Para cada participante, buscar seus assets
-        const participantsWithAssets = await Promise.all(
-          participantsResult.rows.map(async (participant) => {
-            // Buscar assets do participante
-            const assetsResult = await pool.query(`
-              SELECT 
-                ta.asset_type,
-                ta.player_id,
-                ta.pick_id,
-                tam.from_team_id,
-                tam.to_team_id,
-                p.name as player_name,
-                p.position as player_position,
-                p.ovr as player_ovr,
-                s.year as pick_year,
-                pk.round as pick_round,
-                pk.original_team_id,
-                tm_original.name as pick_original_team_name,
-                tm_from.name as from_team_name,
-                tm_from.abbreviation as from_team_abbreviation,
-                tm_to.name as to_team_name,
-                tm_to.abbreviation as to_team_abbreviation,
-                tm_dest.name as to_participant_team_name,
-                tm_dest.abbreviation as to_participant_team_abbreviation
-              FROM trade_assets ta
-              LEFT JOIN players p ON p.id = ta.player_id
-              LEFT JOIN picks pk ON pk.id = ta.pick_id
-              LEFT JOIN seasons s ON s.id = pk.season_id
-              LEFT JOIN teams tm_original ON tm_original.id = pk.original_team_id
-              LEFT JOIN trade_asset_movements tam ON (tam.asset_type = ta.asset_type AND 
-                (tam.asset_id = ta.player_id OR tam.asset_id = ta.pick_id))
-              LEFT JOIN teams tm_from ON tm_from.id = tam.from_team_id
-              LEFT JOIN teams tm_to ON tm_to.id = tam.to_team_id
-              LEFT JOIN trade_participants tp_dest ON tp_dest.id = ta.to_participant_id
-              LEFT JOIN teams tm_dest ON tm_dest.id = tp_dest.team_id
-              WHERE ta.participant_id = $1
-              ORDER BY ta.id
-            `, [participant.id]);
-
-            // Formatar assets
-            const assets = assetsResult.rows.map(asset => {
-              if (asset.asset_type === 'player') {
-                return {
-                  asset_type: 'player',
-                  player_id: asset.player_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  player: {
-                    id: asset.player_id,
-                    name: asset.player_name,
-                    position: asset.player_position,
-                    ovr: asset.player_ovr
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              } else {
-                return {
-                  asset_type: 'pick',
-                  pick_id: asset.pick_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  pick: {
-                    id: asset.pick_id,
-                    year: asset.pick_year,
-                    round: asset.pick_round,
-                    original_team_id: asset.original_team_id,
-                    original_team_name: asset.pick_original_team_name
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              }
-            });
-
-            return {
-              id: participant.id,
-              team_id: participant.team_id,
-              is_initiator: participant.is_initiator,
-              response_status: participant.response_status,
-              team: {
-                id: participant.team_id,
-                name: participant.team_name,
-                abbreviation: participant.team_abbreviation
-              },
-              assets
-            };
-          })
-        );
-
-        return {
-          ...trade,
-          participants: participantsWithAssets
-        };
+        return await this.getTradeWithDetails(trade);
       })
     );
 
@@ -794,126 +781,10 @@ export class TradeService {
       [participantIds]
     );
 
-    // 3. Buscar detalhes dos participantes e assets (igual getTradesByTeam)
+    // 3. Buscar detalhes dos participantes e assets
     const tradesWithDetails = await Promise.all(
       trades.map(async (trade) => {
-        // Buscar participantes da trade
-        const participantsResult = await pool.query(`
-          SELECT 
-            tp.id,
-            tp.team_id,
-            tp.is_initiator,
-            tp.response_status,
-            tm.name as team_name,
-            tm.abbreviation as team_abbreviation
-          FROM trade_participants tp
-          JOIN teams tm ON tm.id = tp.team_id
-          WHERE tp.trade_id = $1
-          ORDER BY tp.id
-        `, [trade.id]);
-
-        // Para cada participante, buscar seus assets
-        const participantsWithAssets = await Promise.all(
-          participantsResult.rows.map(async (participant) => {
-            // Buscar assets do participante
-            const assetsResult = await pool.query(`
-              SELECT 
-                ta.asset_type,
-                ta.player_id,
-                ta.pick_id,
-                tam.from_team_id,
-                tam.to_team_id,
-                p.name as player_name,
-                p.position as player_position,
-                p.ovr as player_ovr,
-                s.year as pick_year,
-                pk.round as pick_round,
-                pk.original_team_id,
-                tm_original.name as pick_original_team_name,
-                tm_from.name as from_team_name,
-                tm_from.abbreviation as from_team_abbreviation,
-                tm_to.name as to_team_name,
-                tm_to.abbreviation as to_team_abbreviation,
-                tm_dest.name as to_participant_team_name,
-                tm_dest.abbreviation as to_participant_team_abbreviation
-              FROM trade_assets ta
-              LEFT JOIN players p ON p.id = ta.player_id
-              LEFT JOIN picks pk ON pk.id = ta.pick_id
-              LEFT JOIN seasons s ON s.id = pk.season_id
-              LEFT JOIN teams tm_original ON tm_original.id = pk.original_team_id
-              LEFT JOIN trade_asset_movements tam ON (tam.asset_type = ta.asset_type AND 
-                (tam.asset_id = ta.player_id OR tam.asset_id = ta.pick_id))
-              LEFT JOIN teams tm_from ON tm_from.id = tam.from_team_id
-              LEFT JOIN teams tm_to ON tm_to.id = tam.to_team_id
-              LEFT JOIN trade_participants tp_dest ON tp_dest.id = ta.to_participant_id
-              LEFT JOIN teams tm_dest ON tm_dest.id = tp_dest.team_id
-              WHERE ta.participant_id = $1
-              ORDER BY ta.id
-            `, [participant.id]);
-
-            // Formatar assets
-            const assets = assetsResult.rows.map(asset => {
-              if (asset.asset_type === 'player') {
-                return {
-                  asset_type: 'player',
-                  player_id: asset.player_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  player: {
-                    id: asset.player_id,
-                    name: asset.player_name,
-                    position: asset.player_position,
-                    ovr: asset.player_ovr
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              } else {
-                return {
-                  asset_type: 'pick',
-                  pick_id: asset.pick_id,
-                  from_team_id: asset.from_team_id,
-                  to_team_id: asset.to_team_id,
-                  from_team_name: asset.from_team_name,
-                  from_team_abbreviation: asset.from_team_abbreviation,
-                  to_team_name: asset.to_team_name,
-                  to_team_abbreviation: asset.to_team_abbreviation,
-                  pick: {
-                    id: asset.pick_id,
-                    year: asset.pick_year,
-                    round: asset.pick_round,
-                    original_team_id: asset.original_team_id,
-                    original_team_name: asset.pick_original_team_name
-                  },
-                  to_participant_team_name: asset.to_participant_team_name,
-                  to_participant_team_abbreviation: asset.to_participant_team_abbreviation
-                };
-              }
-            });
-
-            return {
-              id: participant.id,
-              team_id: participant.team_id,
-              is_initiator: participant.is_initiator,
-              response_status: participant.response_status,
-              team: {
-                id: participant.team_id,
-                name: participant.team_name,
-                abbreviation: participant.team_abbreviation
-              },
-              assets
-            };
-          })
-        );
-
-        return {
-          ...trade,
-          participants: participantsWithAssets
-        };
+        return await this.getTradeWithDetails(trade);
       })
     );
 
@@ -1009,6 +880,67 @@ export class TradeService {
       // Deleta trade
       await client.query('DELETE FROM trades WHERE id = $1', [tradeId]);
       await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Atualizar campo made de uma trade
+  static async updateTradeMade(tradeId: number, made: boolean): Promise<Trade> {
+    const { rows } = await pool.query(`
+      UPDATE trades 
+      SET made = $1      WHERE id = $2
+      RETURNING *
+    `, [made, tradeId]);
+    
+    if (rows.length === 0) {
+      throw new Error('Trade não encontrada');
+    }
+    
+    return rows[0];
+  }
+
+  // Rejeitar automaticamente todas as trades pendentes após o deadline
+  static async rejectPendingTradesAfterDeadline(): Promise<{ rejected: number }> {
+    const client = await pool.connect();
+    
+    try {
+      await client.query('BEGIN');
+      
+      // Buscar todas as trades pendentes ou propostas
+      const pendingTradesResult = await client.query(`
+        SELECT id FROM trades 
+        WHERE status IN ('pending', 'proposed')
+      `);
+      
+      if (pendingTradesResult.rows.length === 0) {
+        await client.query('COMMIT');
+        return { rejected: 0 };
+      }
+      
+      const tradeIds = pendingTradesResult.rows.map(row => row.id);
+      
+      // Atualizar status das trades para 'cancelled'
+      await client.query(`
+        UPDATE trades 
+        SET status = 'cancelled', 
+            updated_at = NOW() 
+        WHERE id = ANY($1)
+      `, [tradeIds]);
+      
+      // Atualizar todos os participantes para 'rejected'
+      await client.query(`
+        UPDATE trade_participants 
+        SET response_status = 'rejected', 
+            responded_at = NOW() 
+        WHERE trade_id = ANY($1)
+      `, [tradeIds]);
+      
+      await client.query('COMMIT');
+      return { rejected: tradeIds.length };
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

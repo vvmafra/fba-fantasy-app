@@ -173,6 +173,7 @@ export interface RosterSeason {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
   created_at: string;
 }
 
@@ -194,6 +195,7 @@ export interface CreateRosterSeasonRequest {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
 }
 
 export interface UpdateRosterSeasonRequest extends Partial<CreateRosterSeasonRequest> {
@@ -229,6 +231,7 @@ export interface RosterPlayoffs {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
   created_at: string;
 }
 
@@ -248,6 +251,7 @@ export interface CreateRosterPlayoffsRequest {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
 }
 
 export interface UpdateRosterPlayoffsRequest extends Partial<CreateRosterPlayoffsRequest> {
@@ -301,6 +305,7 @@ export interface Trade {
   executed_at?: string | null;
   reverted_at?: string | null;
   reverted_by_user?: number | null;
+  made?: boolean;
 }
 
 export interface TradeParticipant {
@@ -377,6 +382,7 @@ export interface TradeWithDetails extends Trade {
     }>;
   }>;
   movements?: TradeAssetMovement[];
+  made?: boolean;
 }
 
 export interface TradeFilters {
@@ -384,6 +390,7 @@ export interface TradeFilters {
   status?: 'proposed' | 'pending' | 'executed' | 'reverted' | 'cancelled';
   team_id?: number;
   created_by_team?: number;
+  made?: boolean;
 }
 
 export interface TradeQueryParams extends PaginationParams, TradeFilters {}

@@ -18,6 +18,7 @@ const router = Router();
 // Rotas GET
 router.get('/test', RosterPlayoffsController.testConnection);
 router.get('/', validate(rosterPlayoffsQuerySchema), RosterPlayoffsController.getAllRosters);
+router.get('/with-details', RosterPlayoffsController.getAllRostersWithDetails);
 router.get('/active', RosterPlayoffsController.getActiveSeasonRoster);
 router.get('/season/:season_id', RosterPlayoffsController.getRosterBySeason);
 router.get('/:id', RosterPlayoffsController.getRosterById);
@@ -30,5 +31,8 @@ router.put('/:id', authenticateAndRequireRosterPlayoffsOwnership, validateWithPa
 
 // Rotas DELETE (apenas admin)
 router.delete('/:id', authenticateAndRequireAdmin, RosterPlayoffsController.deleteRoster);
+
+// Rotas PATCH (apenas admin)
+router.patch('/:id/rotation-made', authenticateAndRequireAdmin, RosterPlayoffsController.updateRotationMade);
 
 export default router;

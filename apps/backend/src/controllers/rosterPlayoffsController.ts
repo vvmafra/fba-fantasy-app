@@ -128,6 +128,34 @@ export class RosterPlayoffsController {
     }
   });
 
+  // GET /api/v1/roster-playoffs/with-details - Buscar todos os rosters playoffs com detalhes
+  static getAllRostersWithDetails = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const params: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {
+        sortBy: req.query['sortBy'] as string || 'created_at',
+        sortOrder: (req.query['sortOrder'] as 'asc' | 'desc') || 'desc'
+      };
+
+      if (req.query['season_id']) {
+        params.season_id = Number(req.query['season_id']);
+      }
+
+      const rosters = await RosterPlayoffsService.getAllRostersWithDetails(params);
+      
+      return res.status(200).json({
+        success: true,
+        data: rosters
+      });
+    } catch (error) {
+      console.error('💥 Erro no controller:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
   // POST /api/v1/roster-playoffs - Criar novo roster playoffs
   static createRoster = asyncHandler(async (req: Request, res: Response) => {
     const user = (req as any).user; // Usuário que fez a requisição (admin ou dono do time)
@@ -173,5 +201,36 @@ export class RosterPlayoffsController {
       success: true,
       message: 'Roster playoffs deletado com sucesso'
     });
+  });
+
+  // PATCH /api/v1/roster-playoffs/:id/rotation-made - Atualizar apenas o status de rotation_made
+  static updateRotationMade = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { rotation_made } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'ID do roster playoffs é obrigatório' });
+    }
+
+    if (typeof rotation_made !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'rotation_made deve ser um booleano' });
+    }
+    
+    try {
+      const roster = await RosterPlayoffsService.updateRotationMade(Number(id), rotation_made);
+      
+      return res.status(200).json({
+        success: true,
+        data: roster,
+        message: 'Status de rotação atualizado com sucesso'
+      });
+    } catch (error) {
+      console.error('💥 Erro no controller:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
   });
 }

@@ -10,6 +10,7 @@ export interface Trade {
   executed_at?: string | null;
   reverted_at?: string | null;
   reverted_by_user?: number | null;
+  made?: boolean;
 }
 
 export interface TradeParticipant {
@@ -63,6 +64,7 @@ export interface TradeWithDetails extends Trade {
     }>;
   }>;
   movements?: TradeAssetMovement[];
+  made?: boolean;
 }
 
 export interface CreateTradeRequest {
@@ -89,6 +91,7 @@ export interface TradeFilters {
   status?: 'proposed' | 'pending' | 'executed' | 'reverted' | 'cancelled';
   team_id?: number;
   created_by_team?: number;
+  made?: boolean;
 }
 
 export interface TradeQueryParams {
@@ -100,6 +103,7 @@ export interface TradeQueryParams {
   status?: 'proposed' | 'pending' | 'executed' | 'reverted' | 'cancelled';
   team_id?: number;
   created_by_team?: number;
+  made?: boolean;
 }
 
 export interface TradeCounts {
@@ -166,4 +170,25 @@ export const tradeService = {
       season_start: seasonStart, 
       season_end: seasonEnd 
     }),
+
+  // Verificar limites de trades para uma trade específica
+  checkTradeLimits: (tradeId: number) =>
+    apiRequest.get<{
+      canAccept: boolean;
+      participants: Array<{
+        teamId: number;
+        teamName: string;
+        canTrade: boolean;
+        tradesUsed: number;
+        tradesLimit: number;
+      }>;
+    }>(`/trades/limits/${tradeId}`),
+
+  // Rejeitar trades pendentes após deadline (admin apenas)
+  rejectPendingTradesAfterDeadline: () =>
+    apiRequest.post<{ rejected: number }>('/trades/reject-pending-after-deadline'),
+
+  // Atualizar campo made de uma trade (admin apenas)
+  updateTradeMade: (tradeId: number, made: boolean) =>
+    apiRequest.patch<Trade>(`/trades/${tradeId}/made`, { made }),
 }; 

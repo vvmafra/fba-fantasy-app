@@ -235,8 +235,8 @@ const SeasonsPage = () => {
       <div className="flex items-center gap-3">
         <Calendar className="h-8 w-8 text-nba-orange" />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Temporadas</h1>
-          <p className="text-gray-600">Gerencie as temporadas da liga</p>
+          <h1 className="text-lg font-bold text-nba-dark sm:text-2xl md:text-3xl">Gerenciamento de Temporadas</h1>
+          {/* <p className="text-gray-600">Gerencie as temporadas da liga</p> */}
         </div>
       </div>
 

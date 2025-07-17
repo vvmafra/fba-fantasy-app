@@ -5,20 +5,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { rosterService } from '@/services/rosterService';
+import { rosterPlayoffsService } from '@/services/rosterPlayoffsService';
 import { seasonService, Season } from '@/services/seasonService';
 import { useToast } from '@/hooks/use-toast';
 import { FileText, Users, Clock, Settings, Trophy } from 'lucide-react';
 
-interface RosterWithDetails {
+interface RosterPlayoffsWithDetails {
   id: number;
   team_name: string;
   team_abbreviation: string;
   rotation_style: 'automatic' | 'manual';
   minutes_starting?: [number, number][];
   minutes_bench?: [number, number][];
-  gleague1_player_id?: number | null;
-  gleague2_player_id?: number | null;
   total_players_rotation?: number;
   age_preference?: number | null;
   game_style?: string;
@@ -43,11 +41,6 @@ interface RosterWithDetails {
     position: string;
     minutes: number;
   }>;
-  gleague_players: Array<{
-    id: number;
-    name: string;
-    position: string;
-  }>;
   franchise_player?: {
     id: number;
     name: string;
@@ -55,8 +48,8 @@ interface RosterWithDetails {
   } | null;
 }
 
-export default function RostersSeasonPage() {
-  const [rosters, setRosters] = useState<RosterWithDetails[]>([]);
+export default function RostersPlayoffsPage() {
+  const [rosters, setRosters] = useState<RosterPlayoffsWithDetails[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,7 +90,7 @@ export default function RostersSeasonPage() {
 
       setLoading(true);
       try {
-        const response = await rosterService.getAllRostersWithDetails({
+        const response = await rosterPlayoffsService.getAllRostersWithDetails({
           season_id: selectedSeason,
           sortBy,
           sortOrder
@@ -108,15 +101,15 @@ export default function RostersSeasonPage() {
           // Inicializar checkedRosters baseado na propriedade rotation_made
           const checkedIds = new Set(
             response.data
-              .filter((roster: RosterWithDetails) => roster.rotation_made)
-              .map((roster: RosterWithDetails) => roster.id)
+              .filter((roster: RosterPlayoffsWithDetails) => roster.rotation_made)
+              .map((roster: RosterPlayoffsWithDetails) => roster.id)
           );
           setCheckedRosters(checkedIds);
         }
       } catch (error) {
         toast({
           title: "Erro",
-          description: "Erro ao carregar rosters",
+          description: "Erro ao carregar rosters de playoffs",
           variant: "destructive"
         });
       } finally {
@@ -200,7 +193,7 @@ export default function RostersSeasonPage() {
       const newRotationMade = !isCurrentlyChecked;
       
       // Fazer chamada para a API
-      await rosterService.updateRotationMade(rosterId, newRotationMade);
+      await rosterPlayoffsService.updateRotationMade(rosterId, newRotationMade);
       
       // Atualizar estado local
       const newChecked = new Set(checkedRosters);
@@ -222,13 +215,13 @@ export default function RostersSeasonPage() {
       
       toast({
         title: "Sucesso",
-        description: `Roster ${newRotationMade ? 'marcado' : 'desmarcado'} como feito`,
+        description: `Roster de playoffs ${newRotationMade ? 'marcado' : 'desmarcado'} como feito`,
         variant: "default"
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao atualizar status do roster",
+        description: "Erro ao atualizar status do roster de playoffs",
         variant: "destructive"
       });
     }
@@ -239,7 +232,7 @@ export default function RostersSeasonPage() {
     try {
       // Fazer chamadas para a API para todos os rosters
       await Promise.all(
-        rosterIds.map(id => rosterService.updateRotationMade(id, true))
+        rosterIds.map(id => rosterPlayoffsService.updateRotationMade(id, true))
       );
       
       // Atualizar estado local
@@ -258,13 +251,13 @@ export default function RostersSeasonPage() {
       
       toast({
         title: "Sucesso",
-        description: `${rosterIds.length} rosters marcados como feitos`,
+        description: `${rosterIds.length} rosters de playoffs marcados como feitos`,
         variant: "default"
       });
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Erro ao marcar rosters como feitos",
+        description: "Erro ao marcar rosters de playoffs como feitos",
         variant: "destructive"
       });
     }
@@ -275,7 +268,7 @@ export default function RostersSeasonPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Carregando rosters...</p>
+          <p className="mt-4 text-muted-foreground">Carregando rosters de playoffs...</p>
         </div>
       </div>
     );
@@ -284,8 +277,8 @@ export default function RostersSeasonPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-2 mb-6">
-        <FileText className="h-6 w-6" />
-        <h1 className="text-lg font-bold text-nba-dark sm:text-2xl md:text-3xl">Rosters da Temporada</h1>
+        <Trophy className="h-6 w-6" />
+        <h1 className="text-lg font-bold text-nba-dark sm:text-2xl md:text-3xl">Rosters de Playoffs</h1>
       </div>
 
       {/* Filtros */}
@@ -304,13 +297,13 @@ export default function RostersSeasonPage() {
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a temporada" />
                 </SelectTrigger>
-                                 <SelectContent>
-                   {seasons.map((season) => (
-                     <SelectItem key={season.id} value={season.id.toString()}>
-                       Temporada {season.season_number} ({season.year}) {season.is_active && '(Ativa)'}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
+                <SelectContent>
+                  {seasons.map((season) => (
+                    <SelectItem key={season.id} value={season.id.toString()}>
+                      Temporada {season.season_number} ({season.year}) {season.is_active && '(Ativa)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 
@@ -364,7 +357,7 @@ export default function RostersSeasonPage() {
         <CardContent>
           {manualRosters.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-lg">
-              Nenhum roster manual encontrado
+              Nenhum roster manual de playoffs encontrado
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -381,7 +374,7 @@ export default function RostersSeasonPage() {
                             // Desmarcar todos os rosters manuais
                             const uncheckedIds = manualRosters.map(r => r.id);
                             Promise.all(
-                              uncheckedIds.map(id => rosterService.updateRotationMade(id, false))
+                              uncheckedIds.map(id => rosterPlayoffsService.updateRotationMade(id, false))
                             ).then(() => {
                               setCheckedRosters(new Set());
                               setRosters(prevRosters => 
@@ -394,7 +387,7 @@ export default function RostersSeasonPage() {
                             }).catch(() => {
                               toast({
                                 title: "Erro",
-                                description: "Erro ao desmarcar rosters",
+                                description: "Erro ao desmarcar rosters de playoffs",
                                 variant: "destructive"
                               });
                             });
@@ -405,7 +398,6 @@ export default function RostersSeasonPage() {
                     <TableHead className="w-24">Time</TableHead>
                     <TableHead className="min-w-[170px] md:min-w-[200px]">Titulares</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Reservas</TableHead>
-                    <TableHead className="min-w-[150px] md:min-w-[200px]">G-League</TableHead>
                     <TableHead className="min-w-[100px] md:min-w-[150px]">Config</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[150px]">Estratégias</TableHead>
                     <TableHead className="w-24">Enviado</TableHead>
@@ -441,15 +433,6 @@ export default function RostersSeasonPage() {
                           {roster.bench_players.map((player) => (
                             <div key={player.id} className="text-xs">
                               {getAbbreviatedName(player.name)} ({player.minutes}min)
-                            </div>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          {roster.gleague_players.map((player) => (
-                            <div key={player.id} className="text-xs">
-                              {getAbbreviatedName(player.name)}
                             </div>
                           ))}
                         </div>
@@ -509,7 +492,7 @@ export default function RostersSeasonPage() {
         <CardContent>
           {automaticRosters.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-lg">
-              Nenhum roster automático encontrado
+              Nenhum roster automático de playoffs encontrado
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -526,7 +509,7 @@ export default function RostersSeasonPage() {
                             // Desmarcar todos os rosters automáticos
                             const uncheckedIds = automaticRosters.map(r => r.id);
                             Promise.all(
-                              uncheckedIds.map(id => rosterService.updateRotationMade(id, false))
+                              uncheckedIds.map(id => rosterPlayoffsService.updateRotationMade(id, false))
                             ).then(() => {
                               setCheckedRosters(new Set());
                               setRosters(prevRosters => 
@@ -539,7 +522,7 @@ export default function RostersSeasonPage() {
                             }).catch(() => {
                               toast({
                                 title: "Erro",
-                                description: "Erro ao desmarcar rosters",
+                                description: "Erro ao desmarcar rosters de playoffs",
                                 variant: "destructive"
                               });
                             });
@@ -550,7 +533,6 @@ export default function RostersSeasonPage() {
                     <TableHead className="w-24">Time</TableHead>
                     <TableHead className="min-w-[120px] md:min-w-[150px]">Rotação</TableHead>
                     <TableHead className="w-20">Idade</TableHead>
-                    <TableHead className="w-20">G-League</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Config</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Estratégias</TableHead>
                     <TableHead className="w-24">Enviado</TableHead>
@@ -583,15 +565,6 @@ export default function RostersSeasonPage() {
                           ) : (
                             <span className="text-muted-foreground">Sem preferência</span>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-0.5">
-                          {roster.gleague_players.map((player) => (
-                            <div key={player.id} className="text-xs">
-                              {getAbbreviatedName(player.name)}
-                            </div>
-                          ))}
                         </div>
                       </TableCell>
                       <TableCell>

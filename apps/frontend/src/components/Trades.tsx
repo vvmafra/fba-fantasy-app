@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
-import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade, useExecutedTradesCount } from '@/hooks/useTrades';
+import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade, useExecutedTradesCount, useTradeLimits } from '@/hooks/useTrades';
 import { useTeams } from '@/hooks/useTeams';
 import { useSeasonsFromActive } from '@/hooks/useSeasons';
+import { useTradeDeadline } from '@/hooks/useDeadlines';
 import { TradeWithDetails } from '@/services/tradeService';
 import TradeProposal from './forms/tradeProposal';
 import { useAuth } from '@/contexts/AuthContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { tradeService } from '@/services/tradeService';
+import { deadlineService } from '@/services/deadlineService';
 
 interface TradesProps {
   isAdmin: boolean;
@@ -35,6 +37,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const { data: countsData } = useTradeCounts(currentSeason);
   const { data: teamsData } = useTeams();
   const { data: seasonsData } = useSeasonsFromActive();
+  const { deadline: tradeDeadline, loading: deadlineLoading } = useTradeDeadline();
   
   // Calcular período atual para limite de trades (a cada 2 temporadas)
   const seasonStart = Math.floor((currentSeason - 1) / 2) * 2 + 1;
@@ -46,6 +49,12 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
     seasonStart, 
     seasonEnd
   );
+  
+  // Verificar se o deadline de trade já passou
+  const isTradeDeadlineExpired = tradeDeadline ? deadlineService.utils.isDeadlineExpired(tradeDeadline) : false;
+  
+  // Verificar se está próximo do deadline (menos de 8 horas)
+  const isTradeDeadlineNear = tradeDeadline ? deadlineService.utils.isDeadlineNear(tradeDeadline) : false;
   
   const updateResponseMutation = useUpdateTradeResponse();
   const executeTradeMutation = useExecuteTrade();
@@ -76,7 +85,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const tradesUsed = tradeLimitData?.data?.trades_used || 0;
   const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
   const tradesRemaining = tradesLimit - tradesUsed;
-  const canProposeTrade = tradesRemaining > 0;
+  const canProposeTrade = tradesRemaining > 0 && !isTradeDeadlineExpired;
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
@@ -157,12 +166,20 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const TradeCard = ({ trade }: { trade: any }) => {
     // Identifica o participante do time logado
     const myParticipant = trade.participants?.find((p: any) => p.team_id === teamId);
+    
+    // Verificar limites de trades para esta trade específica
+    const { data: tradeLimitsData } = useTradeLimits(trade.id);
+    
     // Função para mostrar status amigável
     const getResponseStatus = (status: string) => {
       if (status === 'accepted') return <span className="text-green-700 font-semibold">Aceitou</span>;
       if (status === 'rejected') return <span className="text-red-700 font-semibold">Rejeitou</span>;
       return <span className="text-yellow-700 font-semibold">Pendente</span>;
     };
+    
+    // Verificar se algum participante atingiu o limite
+    const hasParticipantAtLimit = tradeLimitsData?.data?.participants?.some((p: any) => !p.canTrade) || false;
+    const participantsAtLimit = tradeLimitsData?.data?.participants?.filter((p: any) => !p.canTrade) || [];
 
     return (
       <Card className="h-full">
@@ -201,16 +218,21 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                 <div className="font-medium text-gray-700 mb-1">
                   {participant.team.name} ({participant.team.abbreviation}) enviou:
                 </div>
-                {participant.assets?.map((asset: any, index: number) => {
-                  // Lógica para mostrar o destino correto em trades de 2 times
-                  let destinoAbbreviation = asset.to_participant_team_abbreviation;
-                  if (trade.participants?.length === 2) {
-                    // Pega o outro participante
+                {participant.assets?.map((asset: any) => {
+                  // Determinar o destino do asset
+                  let destinoAbbreviation = '?';
+                  
+                  if (asset.to_team) {
+                    // Se tem to_team definido, usar ele
+                    destinoAbbreviation = asset.to_team.abbreviation;
+                  } else if (trade.participants?.length === 2) {
+                    // Se não tem to_team mas são apenas 2 times, pegar o outro participante
                     const outroParticipante = trade.participants.find((p: any) => p.id !== participant.id);
                     destinoAbbreviation = outroParticipante?.team?.abbreviation || '?';
                   }
+                  
                   return (
-                    <div key={index} className="flex items-center ml-2 mb-1">
+                    <div key={`${participant.id}-${asset.id}`} className="flex items-center ml-2 mb-1">
                       {asset.asset_type === 'player' ? (
                         <User size={10} className="mr-1 text-gray-500" />
                       ) : (
@@ -219,7 +241,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                       <span className="text-xs">
                         {asset.asset_type === 'player'
                           ? `${asset.player?.name || 'Jogador'} → para ${destinoAbbreviation}`
-                          : `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || '?'}) → para ${destinoAbbreviation}`
+                          : `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || asset.pick?.original_team_abbreviation || '?'}) → para ${destinoAbbreviation}`
                         }
                       </span>
                     </div>
@@ -228,6 +250,30 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
               </div>
             ))}
           </div>
+
+          {/* Aviso de limite de trades */}
+          {hasParticipantAtLimit && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs">
+                  <p className="font-semibold text-red-800 mb-1">
+                    ⚠️ Trade não pode ser aceita
+                  </p>
+                  <p className="text-red-700 mb-2">
+                    Os seguintes times atingiram o limite de trades para este período:
+                  </p>
+                  <ul className="space-y-1">
+                    {participantsAtLimit.map((participant: any) => (
+                      <li key={participant.teamId} className="text-red-600">
+                        • <strong>{participant.teamName}</strong>: {participant.tradesUsed}/{participant.tradesLimit} trades utilizadas
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Status dos participantes */}
           <div className="space-y-1 text-xs">
@@ -267,6 +313,14 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                   size="sm"
                   className="bg-green-600 hover:bg-green-700 text-xs"
                   onClick={() => handleRespondToTrade(myParticipant.id, 'accepted')}
+                  disabled={hasParticipantAtLimit || !canProposeTrade}
+                  title={
+                    hasParticipantAtLimit 
+                      ? "Não é possível aceitar - limite de trades atingido"
+                      : isTradeDeadlineExpired
+                      ? "Não é possível aceitar - deadline de trade expirado"
+                      : ""
+                  }
                 >
                   Aceitar
                 </Button>
@@ -275,6 +329,12 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                   variant="destructive"
                   className="text-xs"
                   onClick={() => handleRespondToTrade(myParticipant.id, 'rejected')}
+                  disabled={!canProposeTrade}
+                  title={
+                    isTradeDeadlineExpired
+                      ? "Não é possível rejeitar - deadline de trade expirado"
+                      : ""
+                  }
                 >
                   Rejeitar
                 </Button>
@@ -291,7 +351,12 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                   variant="destructive"
                   className="text-xs"
                   onClick={() => handleCancelTrade(trade.id)}
-                  disabled={cancelingTradeId === trade.id}
+                  disabled={cancelingTradeId === trade.id || !canProposeTrade}
+                  title={
+                    isTradeDeadlineExpired
+                      ? "Não é possível cancelar - deadline de trade expirado"
+                      : ""
+                  }
                 >
                   {cancelingTradeId === trade.id ? 'Cancelando...' : 'Cancelar'}
                 </Button>
@@ -307,8 +372,9 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
 
   return (
     <div className="p-4 pb-20 space-y-6">
-      {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3">
+
+       {/* Quick Stats */}
+       <div className="grid grid-cols-3 gap-3">
         <Card className="text-center">
           <CardContent className="p-3">
             <p className="text-lg font-bold text-blue-600">{myPendingTrades.length}</p>
@@ -338,6 +404,50 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
         </Card>
       </div>
 
+       {/* Aviso sobre deadline de trade */}
+       {tradeDeadline && (
+        <Card className={`border-2 ${isTradeDeadlineExpired ? 'border-red-200 bg-red-50' : isTradeDeadlineNear ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className={`h-5 w-5 ${isTradeDeadlineExpired ? 'text-red-600' : isTradeDeadlineNear ? 'text-orange-600' : 'text-blue-600'}`} />
+              <div>
+                <p className="text-sm font-medium">
+                  {isTradeDeadlineExpired ? 'Deadline de Trade Expirado' : isTradeDeadlineNear ? 'Deadline de Trade Próximo' : 'Deadline de Trade'}
+                </p>
+                <p className="text-xs">
+                  {isTradeDeadlineExpired 
+                    ? `O deadline de trade expirou em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Não é mais possível fazer trades.`
+                    : isTradeDeadlineNear 
+                    ? `Deadline de trade em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Apresse-se!`
+                    : `Deadline de trade: ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}`
+                  }
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+       {/* Mensagem quando deadline expirou */}
+       {isTradeDeadlineExpired && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-red-800">
+                  Deadline de Trade Expirado
+                </p>
+                <p className="text-xs text-red-600">
+                  O deadline de trade expirou. Não é mais possível aceitar, rejeitar ou cancelar trades pendentes.
+                  Todas as trades pendentes serão automaticamente canceladas.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* New Trade Button */}
       <TradeProposal 
         teamId={teamId} 
@@ -348,7 +458,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
       />
       
       {/* Mensagem quando limite atingido */}
-      {!canProposeTrade && (
+      {!canProposeTrade && !isTradeDeadlineExpired && (
         <Card className="border-orange-200 bg-orange-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">

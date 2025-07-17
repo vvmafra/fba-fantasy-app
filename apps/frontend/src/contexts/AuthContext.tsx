@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authStorage, ensureValidToken } from '@/lib/auth';
 import { useAuthPersistence } from '@/hooks/useAuthPersistence';
+import { config } from '@/lib/config';
 
 type User = {
   id: string;
@@ -43,9 +44,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Usar o hook de persistência
   useAuthPersistence();
 
+  // Cache para evitar requisições desnecessárias
+  const [lastUserDataUpdate, setLastUserDataUpdate] = useState<number>(0);
+  const USER_DATA_CACHE_DURATION = 3 * 60 * 1000; // 3 minutos
+
   // Função para buscar dados atualizados do usuário do servidor
   const refreshUserData = async (): Promise<void> => {
     try {
+      // Verificar se já atualizamos recentemente
+      const now = Date.now();
+      if (now - lastUserDataUpdate < USER_DATA_CACHE_DURATION) {
+        console.log('⏭️ Dados do usuário ainda em cache, pulando atualização');
+        return;
+      }
+
       console.log('🔄 Atualizando dados do usuário...');
       
       const token = authStorage.getToken();
@@ -55,7 +67,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // Fazer requisição para buscar dados atualizados do usuário
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/v1/auth/me`, {
+      const response = await fetch(`${config.apiUrl}/auth/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -74,8 +86,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const updatedUserData = { ...currentUserData, ...data.data };
             localStorage.setItem('user', JSON.stringify(updatedUserData));
             
-            // Atualizar estado
+            // Atualizar estado e cache
             setUser(updatedUserData);
+            setLastUserDataUpdate(now);
           }
         }
       } else {
@@ -161,14 +174,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener('userTeamChanged', handleUserTeamChanged as EventListener);
   }, []);
 
-  // Verificar token periodicamente (a cada 10 minutos em vez de 5)
+  // Verificar token periodicamente (a cada 15 minutos para otimizar performance)
   useEffect(() => {
     const interval = setInterval(async () => {
       if (user) {
         console.log('⏰ Verificação periódica de autenticação...');
         await checkAuth();
       }
-    }, 10 * 60 * 1000); // 10 minutos
+    }, 15 * 60 * 1000); // 15 minutos
 
     return () => clearInterval(interval);
   }, [user]);

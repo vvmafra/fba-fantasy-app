@@ -215,8 +215,8 @@ const UsersPage = () => {
         <div className="flex items-center gap-3">
           <Users className="h-8 w-8 text-nba-orange" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
-            <p className="text-gray-600 hidden md:block">Gerencie todos os usuários da liga</p>
+            <h1 className="text-lg font-bold text-nba-dark sm:text-2xl md:text-3xl">Gerenciamento de Usuários</h1>
+            {/* <p className="text-gray-600 hidden md:block">Gerencie todos os usuários da liga</p> */}
           </div>
         </div>
         <Button onClick={handleAddUser} className="bg-nba-orange hover:bg-nba-orange/90">

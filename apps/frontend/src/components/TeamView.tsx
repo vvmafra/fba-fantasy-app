@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Crown, Loader2, Pencil, Check, X, Copy } from 'lucide-react';
 import { usePlayersByTeam, useUpdatePlayer } from '@/hooks/usePlayers';
 import { useTeam } from '@/hooks/useTeams';
+import { useActiveLeagueCap } from '@/hooks/useLeagueCap';
 import { Player } from '@/services/playerService';
 import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -35,11 +36,13 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   // Hooks para buscar dados da API
   const { data: teamPlayersResponse, isLoading, error } = usePlayersByTeam(numericTeamId);
   const { data: team, isLoading: teamLoading, error: teamError } = useTeam(numericTeamId);
+  const { data: activeLeagueCapResponse, isLoading: leagueCapLoading } = useActiveLeagueCap();
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
   const { toast } = useToast();
 
   // Extrair dados da resposta da API
   const teamPlayers: Player[] = teamPlayersResponse?.data || [];
+  const activeLeagueCap = activeLeagueCapResponse?.data;
 
   // Estado para gerenciar titulares e reservas
   const [starters, setStarters] = useState<Player[]>([]);
@@ -114,9 +117,9 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     return top8Players.reduce((sum, player) => sum + player.ovr, 0);
   }, [teamPlayers]);
 
-  // Valores de CAP mínimo e máximo (placeholder - será implementado depois)
-  const minCap = 620; // Exemplo: CAP mínimo da liga
-  const maxCap = 680; // Exemplo: CAP máximo da liga
+  // Valores de CAP mínimo e máximo vindos da API
+  const minCap = activeLeagueCap?.min_cap || 620; // Fallback para valores padrão
+  const maxCap = activeLeagueCap?.max_cap || 680; // Fallback para valores padrão
 
   // Verificar se está dentro dos limites
   const isCapValid = currentCap >= minCap && currentCap <= maxCap;
@@ -288,9 +291,9 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     return () => { document.body.style.overflow = ''; };
   }, [playerToRelease]);
 
-  if (isLoading) {
+  if (isLoading || leagueCapLoading) {
     return (
-      <div className="p-4 pb-20 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="flex items-center justify-center">
             <img src="/loading.gif" alt="Loading" className="w-20 h-20" />

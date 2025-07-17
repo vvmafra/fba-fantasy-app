@@ -71,7 +71,7 @@ export const deadlineService = {
       return new Date(combinedDateTime);
     },
 
-    // Formatar data completa do deadline (ex: "22/01/2024 14h00")
+    // Formatar data completa do deadline (ex: "22/01 (segunda-feira) 14h00")
     formatDeadlineDate: (deadline: Deadline): string => {
       // Normalizar a data primeiro
       let date: Date;
@@ -80,10 +80,10 @@ export const deadlineService = {
       } else {
         date = new Date(`${deadline.deadline_date}T${deadline.deadline_time}`);
       }
-      
       const time = deadline.deadline_time.substring(0, 5); // Remove segundos
       const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long' });
-      return `${dayName} ${time.replace(':', 'h')}`;
+      const dayMonth = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      return `${dayMonth} (${dayName}) ${time.replace(':', 'h')}`;
     },
 
     // Formatar data e hora separadamente

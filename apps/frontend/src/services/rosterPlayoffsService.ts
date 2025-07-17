@@ -18,6 +18,7 @@ export interface RosterPlayoffs {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
   created_at: string;
 }
 
@@ -78,6 +79,10 @@ export const rosterPlayoffsService = {
   getActiveSeasonRoster: () =>
     apiRequest.get<RosterPlayoffs>('/roster-playoffs/active'),
 
+  // Buscar todos os rosters playoffs com detalhes
+  getAllRostersWithDetails: (params?: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' }) =>
+    apiRequest.get<any[]>('/roster-playoffs/with-details', params),
+
   // Buscar roster playoffs por time e temporada
   getRosterByTeamAndSeason: async (teamId: number, seasonId: number): Promise<RosterPlayoffs | null> => {
     try {
@@ -99,4 +104,8 @@ export const rosterPlayoffsService = {
   // Deletar roster playoffs
   deleteRoster: (id: number) =>
     apiRequest.delete<void>(`/roster-playoffs/${id}`),
+
+  // Atualizar apenas o status de rotation_made
+  updateRotationMade: (id: number, rotationMade: boolean) =>
+    apiRequest.patch<RosterPlayoffs>(`/roster-playoffs/${id}/rotation-made`, { rotation_made: rotationMade }),
 }; 

@@ -71,6 +71,16 @@ export const useExecutedTradesCount = (teamId: number, seasonStart: number, seas
   });
 };
 
+// Hook para verificar limites de trades de uma trade específica
+export const useTradeLimits = (tradeId: number | null) => {
+  return useQuery({
+    queryKey: ['trades', 'limits', tradeId],
+    queryFn: () => tradeService.checkTradeLimits(tradeId!),
+    enabled: !!tradeId,
+    staleTime: 1 * 60 * 1000, // 1 minuto
+  });
+};
+
 // Hook para criar trade
 export const useCreateTrade = () => {
   const queryClient = useQueryClient();
@@ -179,6 +189,32 @@ export const useRevertTrade = () => {
       toast({
         title: "Erro!",
         description: error.response?.data?.message || "Erro ao reverter trade.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+// Hook para atualizar campo made de uma trade (admin)
+export const useUpdateTradeMade = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ tradeId, made }: { tradeId: number; made: boolean }) =>
+      tradeService.updateTradeMade(tradeId, made),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: tradeKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tradeKeys.detail(data.data?.id || 0) });
+      toast({
+        title: "Sucesso!",
+        description: `Trade ${data.data?.made ? 'marcada' : 'desmarcada'} como feita com sucesso.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro!",
+        description: error.response?.data?.message || "Erro ao atualizar status da trade.",
         variant: "destructive",
       });
     },

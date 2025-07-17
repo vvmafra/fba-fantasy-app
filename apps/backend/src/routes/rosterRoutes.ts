@@ -32,4 +32,7 @@ router.put('/:id', authenticateAndRequireRosterOwnership, validateWithParams(ros
 // Rotas DELETE (apenas admin)
 router.delete('/:id', authenticateAndRequireAdmin, RosterController.deleteRoster);
 
+// Rotas PATCH (apenas admin)
+router.patch('/:id/rotation-made', authenticateAndRequireAdmin, RosterController.updateRotationMade);
+
 export default router;

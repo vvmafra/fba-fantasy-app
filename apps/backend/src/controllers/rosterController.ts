@@ -202,4 +202,35 @@ export class RosterController {
       message: 'Roster deletado com sucesso'
     });
   });
+
+  // PATCH /api/v1/roster/:id/rotation-made - Atualizar apenas o status de rotation_made
+  static updateRotationMade = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { rotation_made } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'ID do roster é obrigatório' });
+    }
+
+    if (typeof rotation_made !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'rotation_made deve ser um booleano' });
+    }
+    
+    try {
+      const roster = await RosterService.updateRotationMade(Number(id), rotation_made);
+      
+      return res.status(200).json({
+        success: true,
+        data: roster,
+        message: 'Status de rotação atualizado com sucesso'
+      });
+    } catch (error) {
+      console.error('💥 Erro no controller:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
 }

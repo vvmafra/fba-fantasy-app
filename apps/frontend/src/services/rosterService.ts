@@ -20,6 +20,7 @@ export interface RosterSeason {
   offensive_rebounding?: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back' | null;
   defensive_aggression?: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression' | null;
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
+  rotation_made?: boolean;
   created_at: string;
 }
 
@@ -107,4 +108,8 @@ export const rosterService = {
   // Deletar roster
   deleteRoster: (id: number) =>
     apiRequest.delete<void>(`/roster/${id}`),
+
+  // Atualizar apenas o status de rotation_made
+  updateRotationMade: (id: number, rotationMade: boolean) =>
+    apiRequest.patch<RosterSeason>(`/roster/${id}/rotation-made`, { rotation_made: rotationMade }),
 }; 

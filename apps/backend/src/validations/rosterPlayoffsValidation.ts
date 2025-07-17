@@ -27,6 +27,7 @@ export const createRosterPlayoffsSchema = z.object({
   defensive_rebounding: z.enum(['Run in Transition', 'Crash Defensive Glass', 'Some Crash, Others Run', 'No preference'], {
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
+  rotation_made: z.boolean().optional(),
 });
 
 // Schema para atualização de roster playoffs
@@ -56,6 +57,7 @@ export const updateRosterPlayoffsSchema = z.object({
   defensive_rebounding: z.enum(['Run in Transition', 'Crash Defensive Glass', 'Some Crash, Others Run', 'No preference'], {
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
+  rotation_made: z.boolean().optional(),
 });
 
 // Schema para ID do roster playoffs

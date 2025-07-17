@@ -9,6 +9,7 @@ import {
   FileText, 
   Plus,
   Settings,
+  MessageSquare,
   Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,12 @@ const AdminMenu = ({ children }: AdminMenuProps) => {
     {
       title: 'Formulários e Dados',
       items: [
+        {
+          icon: MessageSquare,
+          label: 'Trades',
+          description: 'Visualizar trades',
+          href: '/admin/trades'
+        },
         {
           icon: FileText,
           label: 'Rosters da Temporada',

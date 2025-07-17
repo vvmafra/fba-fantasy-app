@@ -188,7 +188,8 @@ export class RosterService {
         rosterData.offensive_tempo,
         rosterData.offensive_rebounding,
         rosterData.defensive_aggression,
-        rosterData.defensive_rebounding
+        rosterData.defensive_rebounding,
+        rosterData.rotation_made || false
       ];
 
       const { rows } = await pool.query(
@@ -196,8 +197,9 @@ export class RosterService {
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           gleague1_player_id, gleague2_player_id, total_players_rotation, 
           age_preference, game_style, franchise_player_id, offense_style, defense_style,
-          offensive_tempo, offensive_rebounding, defensive_aggression, defensive_rebounding
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
+          offensive_tempo, offensive_rebounding, defensive_aggression, defensive_rebounding,
+          rotation_made
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
         values
       );
 
@@ -302,6 +304,11 @@ export class RosterService {
         updates.push(`defensive_rebounding = $${paramCount}`);
         values.push(rosterData.defensive_rebounding);
       }
+      if (rosterData.rotation_made !== undefined) {
+        paramCount++;
+        updates.push(`rotation_made = $${paramCount}`);
+        values.push(rosterData.rotation_made);
+      }
 
       if (updates.length === 0) {
         throw createError('Nenhum campo fornecido para atualização', 400);
@@ -335,6 +342,26 @@ export class RosterService {
       if (rowCount === 0) {
         throw createError('Roster não encontrado', 404);
       }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Atualizar apenas o status de rotation_made
+  static async updateRotationMade(id: number, rotationMade: boolean): Promise<RosterSeason> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        'UPDATE roster_season SET rotation_made = $1 WHERE id = $2 RETURNING *',
+        [rotationMade, id]
+      );
+
+      if (rows.length === 0) {
+        throw createError('Roster não encontrado', 404);
+      }
+
+      return this.parseRosterMinutes(rows[0]);
     } catch (error) {
       throw error;
     }

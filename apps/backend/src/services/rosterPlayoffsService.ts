@@ -202,7 +202,8 @@ export class RosterPlayoffsService {
         rosterData.offensive_tempo,
         rosterData.offensive_rebounding,
         rosterData.defensive_aggression,
-        rosterData.defensive_rebounding
+        rosterData.defensive_rebounding,
+        rosterData.rotation_made || false
       ];
 
       const { rows } = await pool.query(
@@ -210,8 +211,8 @@ export class RosterPlayoffsService {
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           total_players_rotation, age_preference, game_style, franchise_player_id, 
           offense_style, defense_style, offensive_tempo, offensive_rebounding, 
-          defensive_aggression, defensive_rebounding
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+          defensive_aggression, defensive_rebounding, rotation_made
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
         values
       );
 
@@ -306,6 +307,11 @@ export class RosterPlayoffsService {
         updates.push(`defensive_rebounding = $${paramCount}`);
         values.push(rosterData.defensive_rebounding);
       }
+      if (rosterData.rotation_made !== undefined) {
+        paramCount++;
+        updates.push(`rotation_made = $${paramCount}`);
+        values.push(rosterData.rotation_made);
+      }
 
       if (updates.length === 0) {
         throw createError('Nenhum campo fornecido para atualização', 400);
@@ -344,6 +350,26 @@ export class RosterPlayoffsService {
     }
   }
 
+  // Atualizar apenas o status de rotation_made
+  static async updateRotationMade(id: number, rotationMade: boolean): Promise<RosterPlayoffs> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query(
+        'UPDATE roster_playoffs SET rotation_made = $1 WHERE id = $2 RETURNING *',
+        [rotationMade, id]
+      );
+
+      if (rows.length === 0) {
+        throw createError('Roster playoffs não encontrado', 404);
+      }
+
+      return this.parseRosterMinutes(rows[0]);
+    } catch (error) {
+      throw error;
+    }
+  }
+
   // Buscar roster playoffs da temporada ativa
   static async getActiveSeasonRoster(): Promise<RosterPlayoffs | null> {
     try {
@@ -361,6 +387,124 @@ export class RosterPlayoffsService {
       }
 
       return this.parseRosterMinutes(rows[0]);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Buscar todos os rosters playoffs com informações dos times e jogadores
+  static async getAllRostersWithDetails(params: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {}): Promise<any[]> {
+    try {
+      this.checkPostgresClient();
+      
+      const { season_id, sortBy = 'created_at', sortOrder = 'desc' } = params;
+      
+      let sql = `
+        SELECT 
+          rp.*,
+          t.name as team_name,
+          t.abbreviation as team_abbreviation
+        FROM roster_playoffs rp
+        JOIN teams t ON rp.team_id = t.id
+        WHERE 1=1
+      `;
+      
+      const values: any[] = [];
+      let paramCount = 0;
+
+      if (season_id) {
+        paramCount++;
+        sql += ` AND rp.season_id = $${paramCount}`;
+        values.push(season_id);
+      }
+
+      sql += ` ORDER BY ${sortBy} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}`;
+
+      const { rows } = await pool.query(sql, values);
+
+      // Para cada roster, buscar informações dos jogadores
+      const rostersWithDetails = await Promise.all(
+        rows.map(async (roster) => {
+          const parsedRoster = this.parseRosterMinutes(roster);
+          
+          // Buscar informações dos jogadores titulares
+          const startingPlayers: any[] = [];
+          if (parsedRoster.minutes_starting && parsedRoster.minutes_starting.length > 0) {
+            const playerIds = parsedRoster.minutes_starting.map(([id]: [number, number]) => id);
+            if (playerIds.length > 0) {
+              const { rows: playerRows } = await pool.query(
+                `SELECT id, name, position FROM players WHERE id = ANY($1)`,
+                [playerIds]
+              );
+              
+              // Mapear jogadores com suas posições e minutos
+              parsedRoster.minutes_starting.forEach(([playerId, minutes]: [number, number]) => {
+                const player = playerRows.find(p => p.id === playerId);
+                if (player) {
+                  startingPlayers.push({
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    minutes
+                  });
+                }
+              });
+            }
+          }
+
+          // Buscar informações dos jogadores reservas
+          const benchPlayers: any[] = [];
+          if (parsedRoster.minutes_bench && parsedRoster.minutes_bench.length > 0) {
+            const playerIds = parsedRoster.minutes_bench.map(([id]: [number, number]) => id);
+            if (playerIds.length > 0) {
+              const { rows: playerRows } = await pool.query(
+                `SELECT id, name, position FROM players WHERE id = ANY($1)`,
+                [playerIds]
+              );
+              
+              // Mapear jogadores com suas posições e minutos
+              parsedRoster.minutes_bench.forEach(([playerId, minutes]: [number, number]) => {
+                const player = playerRows.find(p => p.id === playerId);
+                if (player) {
+                  benchPlayers.push({
+                    id: player.id,
+                    name: player.name,
+                    position: player.position,
+                    minutes
+                  });
+                }
+              });
+            }
+          }
+
+          // Buscar informações dos jogadores G-League (roster playoffs não tem gleague1_player_id e gleague2_player_id)
+          const gleaguePlayers: any[] = [];
+
+          // Buscar informações do jogador franquia
+          let franchisePlayer = null;
+          if (parsedRoster.franchise_player_id) {
+            const { rows: playerRows } = await pool.query(
+              `SELECT id, name, position FROM players WHERE id = $1`,
+              [parsedRoster.franchise_player_id]
+            );
+            if (playerRows.length > 0) {
+              franchisePlayer = playerRows[0];
+            }
+          }
+
+          return {
+            ...parsedRoster,
+            team_name: roster.team_name,
+            team_abbreviation: roster.team_abbreviation,
+            starting_players: startingPlayers,
+            bench_players: benchPlayers,
+            gleague_players: gleaguePlayers,
+            franchise_player: franchisePlayer
+          };
+        })
+      );
+
+      return rostersWithDetails;
     } catch (error) {
       throw error;
     }

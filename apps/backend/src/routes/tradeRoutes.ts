@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { TradeController } from '../controllers/tradeController.js';
 import { validate, validateWithParams } from '../middlewares/validation.js';
 import { 
@@ -40,6 +41,9 @@ router.get('/team/:teamId', requireTradeViewPermission, TradeController.getTrade
 // GET /api/v1/trades/team/:teamId/executed-count - Contar trades executadas de um time em um período
 router.get('/team/:teamId/executed-count', requireTradeViewPermission, TradeController.countExecutedTradesByTeam);
 
+// GET /api/v1/trades/:id/trade-limits - Verificar limites de trades de todos os participantes
+router.get('/:id/trade-limits', TradeController.checkTradeLimits);
+
 // GET /api/v1/trades/:id - Buscar trade por ID com detalhes
 router.get('/:id', validate(tradeIdSchema), TradeController.getTradeById);
 
@@ -68,6 +72,21 @@ router.post(
   authenticateAndRequireAdmin,
   validateWithParams(tradeIdSchema, revertTradeSchema), 
   TradeController.revertTrade
+);
+
+// POST /api/v1/trades/reject-pending-after-deadline - Rejeitar trades pendentes após o deadline (admin apenas)
+router.post(
+  '/reject-pending-after-deadline',
+  authenticateAndRequireAdmin,
+  TradeController.rejectPendingTradesAfterDeadline
+);
+
+// PATCH /api/v1/trades/:id/made - Atualizar campo made de uma trade (admin apenas)
+router.patch(
+  '/:id/made',
+  authenticateAndRequireAdmin,
+  validateWithParams(tradeIdSchema, z.object({ made: z.boolean() })), 
+  TradeController.updateTradeMade
 );
 
 // DELETE /api/v1/trades/:id/cancel - Cancelar trade (iniciador ou admin)

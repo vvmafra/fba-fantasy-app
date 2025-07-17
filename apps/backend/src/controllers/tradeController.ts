@@ -126,25 +126,35 @@ export class TradeController {
   // POST /api/v1/trades/:id/revert - Reverter trade (admin apenas)
   static revertTrade = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const revertData: RevertTradeRequest = req.body;
+    const { reverted_by_user } = req.body;
     
     if (!id) {
       res.status(400).json({ success: false, message: 'ID da trade é obrigatório' });
       return;
     }
     
-    const user = (req as any).user;
-    const trade = await TradeService.revertTrade(Number(id), revertData.reverted_by_user);
+    if (!reverted_by_user) {
+      res.status(400).json({ success: false, message: 'ID do usuário que reverteu é obrigatório' });
+      return;
+    }
+    
+    const trade = await TradeService.revertTrade(Number(id), Number(reverted_by_user));
     
     res.status(200).json({ 
       success: true, 
       data: trade, 
-      message: 'Trade revertida com sucesso',
-      revertedBy: {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      }
+      message: 'Trade revertida com sucesso'
+    });
+  });
+
+  // POST /api/v1/trades/reject-pending-after-deadline - Rejeitar trades pendentes após deadline
+  static rejectPendingTradesAfterDeadline = asyncHandler(async (req: Request, res: Response) => {
+    const result = await TradeService.rejectPendingTradesAfterDeadline();
+    
+    res.status(200).json({ 
+      success: true, 
+      data: result, 
+      message: `${result.rejected} trades pendentes foram rejeitadas automaticamente após o deadline` 
     });
   });
 
@@ -212,6 +222,23 @@ export class TradeController {
     });
   });
 
+  // GET /api/v1/trades/:id/trade-limits - Verificar limites de trades de todos os participantes
+  static checkTradeLimits = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({ success: false, message: 'ID da trade é obrigatório' });
+      return;
+    }
+    
+    const tradeLimits = await TradeService.checkAllParticipantsTradeLimit(Number(id));
+    
+    res.status(200).json({ 
+      success: true, 
+      data: tradeLimits
+    });
+  });
+
   // CANCELAR trade (iniciador ou admin)
   static cancelTrade = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -221,5 +248,29 @@ export class TradeController {
     }
     await TradeService.cancelTrade(Number(id));
     res.status(200).json({ success: true, message: 'Trade cancelada com sucesso' });
+  });
+
+  // PATCH /api/v1/trades/:id/made - Atualizar campo made de uma trade (admin apenas)
+  static updateTradeMade = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { made } = req.body;
+    
+    if (!id) {
+      res.status(400).json({ success: false, message: 'ID da trade é obrigatório' });
+      return;
+    }
+    
+    if (typeof made !== 'boolean') {
+      res.status(400).json({ success: false, message: 'Campo made deve ser um booleano' });
+      return;
+    }
+    
+    const trade = await TradeService.updateTradeMade(Number(id), made);
+    
+    res.status(200).json({ 
+      success: true, 
+      data: trade, 
+      message: `Trade ${made ? 'marcada' : 'desmarcada'} como feita com sucesso` 
+    });
   });
 } 

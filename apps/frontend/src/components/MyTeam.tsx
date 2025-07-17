@@ -1,14 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { DndContext, closestCenter, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { UserX, Star, Crown, FileX, Loader2, Pencil, Check, X, ChevronUp, ChevronDown, GripVertical, Copy } from 'lucide-react';
+import { UserX, Star, Crown, FileX, Loader2, Pencil, Check, X, ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import { usePlayersByTeam, useReleasePlayer, useUpdatePlayer } from '@/hooks/usePlayers';
 import { useTeam, useUpdateTeam } from '@/hooks/useTeams';
+import { useActiveLeagueCap } from '@/hooks/useLeagueCap';
 import { Player } from '@/services/playerService';
 import { config } from '@/lib/config';
 import { useParams } from 'react-router-dom';
@@ -62,6 +59,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   // Hooks para buscar dados da API
   const { data: teamPlayersResponse, isLoading, error } = usePlayersByTeam(numericTeamId);
   const { data: team, isLoading: teamLoading, error: teamError } = useTeam(numericTeamId);
+  const { data: activeLeagueCapResponse, isLoading: leagueCapLoading } = useActiveLeagueCap();
   const updateTeamMutation = useUpdateTeam();
   const releasePlayerMutation = useReleasePlayer(numericTeamId);
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
@@ -69,6 +67,11 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
   // Extrair dados da resposta da API
   const teamPlayers: Player[] = teamPlayersResponse?.data || [];
+  const activeLeagueCap = activeLeagueCapResponse?.data;
+
+  // Valores de CAP mínimo e máximo vindos da API
+  const minCap = activeLeagueCap?.min_cap || 620; // Fallback para valores padrão
+  const maxCap = activeLeagueCap?.max_cap || 680; // Fallback para valores padrão
 
   // Estado para gerenciar titulares e reservas
   const [starters, setStarters] = useState<Player[]>([]);
@@ -86,11 +89,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const [showStarters, setShowStarters] = useState(true);
   const [showBench, setShowBench] = useState(true);
 
-  // Estado para drag and drop
-  const [activeId, setActiveId] = useState<string | null>(null);
-
   // Estado para seleção por clique
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [selectedEmptyPosition, setSelectedEmptyPosition] = useState<number | null>(null);
 
   // Função para ordenar jogadores baseado na ordem salva
   const orderPlayersBySavedOrder = useCallback((players: Player[], savedOrder: any) => {
@@ -160,73 +161,6 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
       }, 1000); // 1 segundo de delay
     };
   }, [savePlayerOrder]);
-
-  // Função para lidar com o drag and drop
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Se está movendo para a mesma posição, não faz nada
-    if (activeId === overId) return;
-
-    // Encontrar em qual lista está o item ativo
-    const activePlayer = [...starters, ...bench].find(p => p.id.toString() === activeId);
-    if (!activePlayer) return;
-
-    const isActiveInStarters = starters.some(p => p.id.toString() === activeId);
-    const isOverInStarters = starters.some(p => p.id.toString() === overId);
-
-    let newStarters = [...starters];
-    let newBench = [...bench];
-
-    // Se está movendo dentro da mesma lista
-    if (isActiveInStarters === isOverInStarters) {
-      if (isActiveInStarters) {
-        // Movendo dentro dos titulares
-        const oldIndex = starters.findIndex(p => p.id.toString() === activeId);
-        const newIndex = starters.findIndex(p => p.id.toString() === overId);
-        newStarters = arrayMove(starters, oldIndex, newIndex);
-      } else {
-        // Movendo dentro das reservas
-        const oldIndex = bench.findIndex(p => p.id.toString() === activeId);
-        const newIndex = bench.findIndex(p => p.id.toString() === overId);
-        newBench = arrayMove(bench, oldIndex, newIndex);
-      }
-    } else {
-      // Movendo entre listas diferentes
-      if (isActiveInStarters) {
-        // Movendo de titulares para reservas
-        const starterIndex = starters.findIndex(p => p.id.toString() === activeId);
-        const benchIndex = bench.findIndex(p => p.id.toString() === overId);
-        
-        const [movedPlayer] = newStarters.splice(starterIndex, 1);
-        newBench.splice(benchIndex, 0, movedPlayer);
-      } else {
-        // Movendo de reservas para titulares
-        const benchIndex = bench.findIndex(p => p.id.toString() === activeId);
-        const starterIndex = starters.findIndex(p => p.id.toString() === overId);
-        
-        const [movedPlayer] = newBench.splice(benchIndex, 1);
-        newStarters.splice(starterIndex, 0, movedPlayer);
-      }
-    }
-
-    // Atualizar estado
-    setStarters(newStarters);
-    setBench(newBench);
-
-    // Salvar ordem com debounce
-    debouncedSave(newStarters, newBench);
-  }, [starters, bench, debouncedSave]);
   
   const avgOverall = useMemo(() => {
     return teamPlayers.length > 0 
@@ -248,10 +182,6 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     return top8Players.reduce((sum, player) => sum + player.ovr, 0);
   }, [teamPlayers]);
 
-  // Valores de CAP mínimo e máximo (placeholder - será implementado depois)
-  const minCap = 620; // Exemplo: CAP mínimo da liga
-  const maxCap = 680; // Exemplo: CAP máximo da liga
-
   // Verificar se está dentro dos limites
   const isCapValid = currentCap >= minCap && currentCap <= maxCap;
   const isBelowMin = currentCap < minCap;
@@ -268,44 +198,87 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
   // Função para troca por clique
   const handlePlayerClick = (playerId: number) => {
-    if (selectedPlayerId === null) {
-      setSelectedPlayerId(playerId);
-      return;
-    }
-    if (selectedPlayerId === playerId) {
+    // Se uma posição vazia está selecionada, mover o jogador para ela
+    if (selectedEmptyPosition !== null) {
+      const player = [...starters, ...bench].find(p => p.id === playerId);
+      if (!player) return;
+
+      let newStarters = [...starters];
+      let newBench = [...bench];
+
+      // Remover jogador de onde ele está
+      const starterIndex = newStarters.findIndex(p => p.id === playerId);
+      const benchIndex = newBench.findIndex(p => p.id === playerId);
+
+      if (starterIndex !== -1) {
+        newStarters.splice(starterIndex, 1);
+      } else if (benchIndex !== -1) {
+        newBench.splice(benchIndex, 1);
+      }
+
+      // Adicionar jogador na posição vazia
+      newStarters.splice(selectedEmptyPosition, 0, player);
+
+      setStarters(newStarters);
+      setBench(newBench);
+      debouncedSave(newStarters, newBench);
+      setSelectedEmptyPosition(null);
       setSelectedPlayerId(null);
       return;
     }
-    // Encontrar ambos jogadores e seus grupos
-    let startersIdx = starters.findIndex(p => p.id === selectedPlayerId);
-    let benchIdx = bench.findIndex(p => p.id === selectedPlayerId);
-    let otherStartersIdx = starters.findIndex(p => p.id === playerId);
-    let otherBenchIdx = bench.findIndex(p => p.id === playerId);
 
-    let newStarters = [...starters];
-    let newBench = [...bench];
+    // Se um jogador já está selecionado, fazer a troca
+    if (selectedPlayerId !== null) {
+      if (selectedPlayerId === playerId) {
+        setSelectedPlayerId(null);
+        return;
+      }
+      
+      // Encontrar ambos jogadores e seus grupos
+      let startersIdx = starters.findIndex(p => p.id === selectedPlayerId);
+      let benchIdx = bench.findIndex(p => p.id === selectedPlayerId);
+      let otherStartersIdx = starters.findIndex(p => p.id === playerId);
+      let otherBenchIdx = bench.findIndex(p => p.id === playerId);
 
-    if (startersIdx !== -1 && otherStartersIdx !== -1) {
-      // Troca dentro dos titulares
-      [newStarters[startersIdx], newStarters[otherStartersIdx]] = [newStarters[otherStartersIdx], newStarters[startersIdx]];
-    } else if (benchIdx !== -1 && otherBenchIdx !== -1) {
-      // Troca dentro das reservas
-      [newBench[benchIdx], newBench[otherBenchIdx]] = [newBench[otherBenchIdx], newBench[benchIdx]];
-    } else if (startersIdx !== -1 && otherBenchIdx !== -1) {
-      // Troca entre titular e reserva
-      const temp = newStarters[startersIdx];
-      newStarters[startersIdx] = newBench[otherBenchIdx];
-      newBench[otherBenchIdx] = temp;
-    } else if (benchIdx !== -1 && otherStartersIdx !== -1) {
-      // Troca entre reserva e titular
-      const temp = newBench[benchIdx];
-      newBench[benchIdx] = newStarters[otherStartersIdx];
-      newStarters[otherStartersIdx] = temp;
+      let newStarters = [...starters];
+      let newBench = [...bench];
+
+      if (startersIdx !== -1 && otherStartersIdx !== -1) {
+        // Troca dentro dos titulares
+        [newStarters[startersIdx], newStarters[otherStartersIdx]] = [newStarters[otherStartersIdx], newStarters[startersIdx]];
+      } else if (benchIdx !== -1 && otherBenchIdx !== -1) {
+        // Troca dentro das reservas
+        [newBench[benchIdx], newBench[otherBenchIdx]] = [newBench[otherBenchIdx], newBench[benchIdx]];
+      } else if (startersIdx !== -1 && otherBenchIdx !== -1) {
+        // Troca entre titular e reserva
+        const temp = newStarters[startersIdx];
+        newStarters[startersIdx] = newBench[otherBenchIdx];
+        newBench[otherBenchIdx] = temp;
+      } else if (benchIdx !== -1 && otherStartersIdx !== -1) {
+        // Troca entre reserva e titular
+        const temp = newBench[benchIdx];
+        newBench[benchIdx] = newStarters[otherStartersIdx];
+        newStarters[otherStartersIdx] = temp;
+      }
+      setStarters(newStarters);
+      setBench(newBench);
+      debouncedSave(newStarters, newBench);
+      setSelectedPlayerId(null);
+      return;
     }
-    setStarters(newStarters);
-    setBench(newBench);
-    debouncedSave(newStarters, newBench);
-    setSelectedPlayerId(null);
+
+    // Selecionar o primeiro jogador
+    setSelectedPlayerId(playerId);
+  };
+
+  // Função para selecionar uma posição vazia
+  const handleEmptyPositionClick = (positionIndex: number) => {
+    if (selectedEmptyPosition === positionIndex) {
+      setSelectedEmptyPosition(null);
+    } else {
+      setSelectedEmptyPosition(positionIndex);
+      setSelectedPlayerId(null); // Limpar seleção de jogador
+    }
   };
 
   const handleCopyTeam = () => {
@@ -313,55 +286,26 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     const startersList = starters.map((p, idx) => `${STARTER_POSITIONS[idx]}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
-    const capLine = `CAP: ${minCap} / **${currentCap}** / ${maxCap}`;
-    const text = `**${team.data.name}**\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n\n${capLine}`;
+    const capLine = `CAP: ${minCap} / *${currentCap}* / ${maxCap}`;
+    const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n\n${capLine}`;
     navigator.clipboard.writeText(text);
     toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
   };
 
-  // Componente SortablePlayerCard
-  const SortablePlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr, onClick, selected }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number; onClick?: () => void; selected?: boolean }) => {
+  // Componente PlayerCard simplificado
+  const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr, onClick, selected }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number; onClick?: () => void; selected?: boolean }) => {
     const isEditing = editingPlayerId === player.id;
-    
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: player.id.toString() });
-
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      opacity: isDragging ? 0.5 : 1,
-    };
-
     const isMobile = useIsMobile();
 
     return (
       <Card 
-        ref={setNodeRef}
-        style={style}
         className={`mb-3 transition-all relative ${
-          isDragging ? 'shadow-lg scale-105 z-50' : ''
-        } ${selected ? 'ring-2 ring-blue-600' : ''}`}
+          selected ? 'ring-2 ring-blue-600' : ''
+        }`}
         onClick={onClick}
       >
         <CardContent className="p-4 relative">
           <div className="flex items-center justify-between">
-            {/* Handle de drag */}
-            <div
-              className="mr-2 flex items-center justify-center w-7 h-7 rounded-full bg-gray-200 cursor-grab active:cursor-grabbing"
-              {...attributes}
-              {...listeners}
-              title="Arraste para mover"
-            >
-              {/* Ícone de drag and drop padrão */}
-              <GripVertical size={16} />
-            </div>
-
             {/* O resto do card */}
             <div className="flex items-center w-full min-w-0">
               {/* Badge */}
@@ -531,9 +475,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     return () => { document.body.style.overflow = ''; };
   }, [playerToRelease]);
 
-  if (isLoading) {
+  if (isLoading || leagueCapLoading) {
     return (
-      <div className="p-4 pb-20 flex items-center justify-center min-h-[400px]">
+      <div className="p-4 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
           <div className="flex items-center justify-center">
             <img src="/loading.gif" alt="Loading" className="w-20 h-20" />
@@ -560,107 +504,103 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   }
 
   return (
-    <DndContext
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="p-4 pb-20 space-y-6">
-        {/* Team Summary */}
-        <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold">{avgOverall}</p>
-                <p className="text-sm opacity-80">OVR Médio</p>
-              </div>
-
-              <div>
-                <p className="text-2xl font-bold">{avgAge}</p>
-                <p className="text-sm opacity-80">Idade Média</p>
-              </div>
-
-              <div>
-                <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
-                <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
-                {teamPlayers.length < 13 && (
-                  <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
-                )}
-                {teamPlayers.length > 15 && (
-                  <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
-                )}
-              </div>
+    <div className="p-4 pb-20 space-y-6">
+      {/* Team Summary */}
+      <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <p className="text-2xl font-bold">{avgOverall}</p>
+              <p className="text-sm opacity-80">OVR Médio</p>
             </div>
+
+            <div>
+              <p className="text-2xl font-bold">{avgAge}</p>
+              <p className="text-sm opacity-80">Idade Média</p>
+            </div>
+
+            <div>
+              <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
+              <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
+              {teamPlayers.length < 13 && (
+                <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
+              )}
+              {teamPlayers.length > 15 && (
+                <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* CAP Information */}
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        {/* CAP Mínimo */}
+        <Card className={`border-2 border-blue-200 bg-blue-50`}>
+          <CardContent className="p-2 md:p-4 text-center">
+            <div className="flex items-center justify-center mb-1 md:mb-2">
+              <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 bg-blue-500`}></div>
+              <h3 className="font-semibold text-xs md:text-sm">CAP Mín.</h3>
+            </div>
+            <p className="text-lg md:text-2xl font-bold text-gray-800">{minCap}</p>
           </CardContent>
         </Card>
 
-        {/* CAP Information */}
-        <div className="grid grid-cols-3 gap-2 md:gap-4">
-          {/* CAP Mínimo */}
-          <Card className={`border-2 border-blue-200 bg-blue-50`}>
-            <CardContent className="p-2 md:p-4 text-center">
-              <div className="flex items-center justify-center mb-1 md:mb-2">
-                <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 bg-blue-500`}></div>
-                <h3 className="font-semibold text-xs md:text-sm">CAP Mín.</h3>
-              </div>
-              <p className="text-lg md:text-2xl font-bold text-gray-800">{minCap}</p>
-            </CardContent>
-          </Card>
+        {/* CAP Atual */}
+        <Card className={`border-2 ${!isCapValid ? 'border-red-500 bg-red-50' : 'border-green-200 bg-green-50'}`}>
+          <CardContent className="p-2 md:p-4 text-center">
+            <div className="flex items-center justify-center mb-1 md:mb-2">
+              <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 ${!isCapValid ? 'bg-red-500' : 'bg-green-500'}`}></div>
+              <h3 className="font-semibold text-xs md:text-sm">CAP Atual</h3>
+            </div>
+            <p className={`text-lg md:text-2xl font-bold ${!isCapValid ? 'text-red-500' : 'text-green-500'}`}>{currentCap}</p>
+            {!isCapValid && (
+              <p className="text-xs text-red-600 mt-1 font-medium">
+                {isBelowMin ? 'Abaixo do CAP!' : 'Acima do CAP!'}
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* CAP Atual */}
-          <Card className={`border-2 ${!isCapValid ? 'border-red-500 bg-red-50' : 'border-green-200 bg-green-50'}`}>
-            <CardContent className="p-2 md:p-4 text-center">
-              <div className="flex items-center justify-center mb-1 md:mb-2">
-                <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 ${!isCapValid ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                <h3 className="font-semibold text-xs md:text-sm">CAP Atual</h3>
-              </div>
-              <p className={`text-lg md:text-2xl font-bold ${!isCapValid ? 'text-red-500' : 'text-green-500'}`}>{currentCap}</p>
-              {!isCapValid && (
-                <p className="text-xs text-red-600 mt-1 font-medium">
-                  {isBelowMin ? 'Abaixo do CAP!' : 'Acima do CAP!'}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        {/* CAP Máximo */}
+        <Card className={`border-2 border-blue-200 bg-blue-50`}>
+          <CardContent className="p-2 md:p-4 text-center">
+            <div className="flex items-center justify-center mb-1 md:mb-2">
+              <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 bg-blue-500`}></div>
+              <h3 className="font-semibold text-xs md:text-sm">CAP Máx.</h3>
+            </div>
+            <p className="text-lg md:text-2xl font-bold text-gray-800">{maxCap}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {/* CAP Máximo */}
-          <Card className={`border-2 border-blue-200 bg-blue-50`}>
-            <CardContent className="p-2 md:p-4 text-center">
-              <div className="flex items-center justify-center mb-1 md:mb-2">
-                <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full mr-1 md:mr-2 bg-blue-500`}></div>
-                <h3 className="font-semibold text-xs md:text-sm">CAP Máx.</h3>
-              </div>
-              <p className="text-lg md:text-2xl font-bold text-gray-800">{maxCap}</p>
-            </CardContent>
-          </Card>
+      {/* Starters */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold flex items-center">
+            <Crown className="mr-2 text-nba-orange" />
+            Quinteto Titular
+            <button onClick={handleCopyTeam} className="ml-2 p-1 rounded hover:bg-gray-200" title="Copiar informações do time">
+              <Copy size={18} />
+            </button>
+          </h2>
+          <Button variant="ghost" size="icon" onClick={() => setShowStarters(v => !v)}>
+            {showStarters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </Button>
         </div>
-
-        {/* Starters */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center">
-              <Crown className="mr-2 text-nba-orange" />
-              Quinteto Titular
-              <button onClick={handleCopyTeam} className="ml-2 p-1 rounded hover:bg-gray-200" title="Copiar informações do time">
-                <Copy size={18} />
-              </button>
-            </h2>
-            <Button variant="ghost" size="icon" onClick={() => setShowStarters(v => !v)}>
-              {showStarters ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </Button>
-          </div>
-          {showStarters && (
-            <SortableContext items={starters.map(p => p.id.toString())} strategy={verticalListSortingStrategy}>
-              <div className="min-h-[200px]">
-                {starters.length > 0 ? (
-                  starters.map((player, index) => (
-                    <SortablePlayerCard
-                      key={player.id}
+        {showStarters && (
+          <div className="min-h-[200px]">
+            {STARTER_POSITIONS.map((position, index) => {
+              const player = starters[index];
+              return (
+                <div key={position} className="mb-3">
+                  {player ? (
+                    <PlayerCard
                       player={player}
                       index={index}
                       isStarter={true}
@@ -668,49 +608,85 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                       onClick={() => handlePlayerClick(player.id)}
                       selected={selectedPlayerId === player.id}
                     />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="p-8 text-center text-gray-500">
-                      <p>Arraste jogadores aqui para formar o quinteto titular.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </SortableContext>
-          )}
-        </div>
-
-        {/* Bench */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">Reservas</h2>
-            <Button variant="ghost" size="icon" onClick={() => setShowBench(v => !v)}>
-              {showBench ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-            </Button>
+                  ) : (
+                    <Card 
+                      className={`mb-3 border-2 border-dashed border-gray-300ition-all relative ${
+                        selectedEmptyPosition === index ? 'ring-2g-blue-600 bg-blue-50' : ''
+                      }`}
+                      onClick={() => handleEmptyPositionClick(index)}
+                    >
+                      <CardContent className="p-4 relative">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center w-full min-w-0">
+                            {/* Badge da posição vazia */}
+                            <div className="flex flex-col items-center justify-center col-span-1">
+                              <Badge 
+                                className={`text-white w-[40px] flex items-center justify-center
+                                  ${
+                                    position === 'PG' ? 'bg-blue-600' :
+                                    position === 'SG' ? 'bg-blue-600' :
+                                    position === 'SF' ? 'bg-blue-700' :
+                                    position === 'PF' ? 'bg-blue-700' :
+                                    'bg-blue-800' // C
+                                  }`}
+                              >
+                                {position}
+                              </Badge>
+                            </div>
+                          
+                          {/* Nome, idade e OVR */}
+                          <div className="flex-1 flex items-center min-w-0 ">
+                            <div className="flex-1 min-w-0 ">
+                              <h3 className="font-semibold text-[15px] sm:text-md text-gray-500 italic">
+                                Vaga disponível
+                              </h3>
+                              <div className="text-xs text-gray-400 mt-1">
+                                {selectedEmptyPosition === index 
+                                  ? 'Agora clique em um jogador do banco para preencher esta posição'
+                                  : 'Clique aqui para selecionar esta posição, depois clique em um jogador do banco'
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          {showBench && (
-            <SortableContext items={bench.map(p => p.id.toString())} strategy={verticalListSortingStrategy}>
-              <div className="min-h-[200px]">
-                {bench.length > 0 ? (
-                  bench.map((player, index) => (
-                    <SortablePlayerCard key={player.id} player={player} index={index} onClick={() => handlePlayerClick(player.id)} selected={selectedPlayerId === player.id} />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="p-8 text-center text-gray-500">
-                      <p>Nenhum reserva no elenco.</p>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            </SortableContext>
-          )}
-        </div>
-
-        {/* Componente de Picks */}
-        <TeamPicks teamId={numericTeamId} />
+        )}
       </div>
+
+      {/* Bench */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Reservas</h2>
+          <Button variant="ghost" size="icon" onClick={() => setShowBench(v => !v)}>
+            {showBench ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </Button>
+        </div>
+        {showBench && (
+          <div className="min-h-[200px]">
+            {bench.length > 0 ? (
+              bench.map((player, index) => (
+                <PlayerCard key={player.id} player={player} index={index} onClick={() => handlePlayerClick(player.id)} selected={selectedPlayerId === player.id} />
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center text-gray-500">
+                  <p>Nenhum reserva no elenco.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Componente de Picks */}
+      <TeamPicks teamId={numericTeamId} />
 
       {/* Modal para adicionar jogador */}
       <ModalAddPlayer
@@ -747,7 +723,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
           </div>
         </div>
       )}
-    </DndContext>
+    </div>
   );
 };
 

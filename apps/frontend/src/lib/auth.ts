@@ -150,8 +150,8 @@ export const authStorage = {
       const expiresAt = localStorage.getItem(AUTH_KEYS.EXPIRES_AT);
       if (!expiresAt) return true;
       
-      // Considerar expirado se faltar menos de 5 minutos
-      const buffer = 5 * 60 * 1000; // 5 minutos em millisegundos
+      // Considerar expirado se faltar menos de 10 minutos
+      const buffer = 15 * 60 * 1000; // 15 minutos em millisegundos
       const isExpired = Date.now() + buffer >= parseInt(expiresAt);
       
       console.log('⏰ Token expirado:', isExpired, 'Expira em:', new Date(parseInt(expiresAt)));
