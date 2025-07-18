@@ -12,6 +12,7 @@ import userRoutes from './userRoutes.js';
 import leagueCapRoutes from './leagueCapRoutes.js';
 import draftPickRoutes from './draftPickRoutes.js';
 import seasonAwardsRoutes from './seasonAwardsRoutes.js';
+import teamStandingRoutes from './teamStandingRoutes.js';
 
 const router = Router();
 
@@ -38,5 +39,6 @@ router.use('/users', userRoutes);
 router.use('/league-cap', leagueCapRoutes);
 router.use('/draft-picks', draftPickRoutes);
 router.use('/season-awards', seasonAwardsRoutes);
+router.use('/team-standings', teamStandingRoutes);
 
 export default router; 

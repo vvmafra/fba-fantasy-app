@@ -5,7 +5,7 @@ import { authStorage, ensureValidToken } from './auth';
 // Configuração base do cliente HTTP
 export const apiClient = axios.create({
   baseURL: config.apiUrl,
-  timeout: 10000,
+  timeout: 30000, // Aumentado para 30 segundos
   headers: {
     'Content-Type': 'application/json',
   },

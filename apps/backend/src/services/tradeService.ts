@@ -926,8 +926,7 @@ export class TradeService {
       // Atualizar status das trades para 'cancelled'
       await client.query(`
         UPDATE trades 
-        SET status = 'cancelled', 
-            updated_at = NOW() 
+        SET status = 'cancelled'
         WHERE id = ANY($1)
       `, [tradeIds]);
       

@@ -605,3 +605,39 @@ export interface SeasonAwardsWithDetails extends SeasonAwards {
     abbreviation: string;
   } | null;
 } 
+
+// Tipos para Team Standings
+export interface TeamStanding {
+  id: number;
+  season_id: number;
+  team_id: number;
+  final_position: number; // 1-30 (temporada regular)
+  seed: number; // 1-15 (conferência)
+  elimination_round: number; // 0=não foi aos playoffs, 1=1ª rodada, 2=2ª rodada, 3=final conf, 4=final, 5=campeão
+  created_at: string;
+}
+
+export interface CreateTeamStandingRequest {
+  season_id: number;
+  team_id: number;
+  final_position: number;
+  seed: number;
+  elimination_round: number;
+}
+
+export interface UpdateTeamStandingRequest extends Partial<CreateTeamStandingRequest> {
+  id: number;
+}
+
+export interface TeamStandingWithDetails extends TeamStanding {
+  team: {
+    id: number;
+    name: string;
+    abbreviation: string;
+    conference: string;
+  };
+  season: {
+    id: number;
+    name: string;
+  };
+} 

@@ -63,14 +63,13 @@ export class SeasonController {
 
   // POST /api/v1/seasons/advance-next - Avançar para próxima temporada
   static advanceToNextSeason = asyncHandler(async (req: Request, res: Response) => {
-    const season = await SeasonService.advanceToNextSeason();
+    const results = await SeasonService.advanceToNextSeason();
 
-    // TO BE IMPLEMENTED
-    // Adicionar picks subsequentes de todos os times
-    // se for para temporada impar, resetar número de trades de cada time
-    // Alterar as deadlines (datas)
-    // Ajuste de CAP (vai ser manual atualmente)
-    return res.status(200).json({ success: true, data: season, message: 'Avançou para próxima temporada com sucesso' });
+    return res.status(200).json({ 
+      success: true, 
+      data: results,
+      message: `Avançou para próxima temporada com sucesso. Trades canceladas: ${results.tradesCancelled}, Picks adicionados: ${results.draftPicksAdded} (season_id: ${results.draftPicksSeasonId}), Deadlines atualizadas: ${results.deadlinesUpdated}`
+    });
   });
 
   // POST /api/v1/seasons/go-back - Voltar para temporada anterior
