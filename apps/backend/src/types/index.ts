@@ -448,4 +448,160 @@ export interface CreateLeagueCapRequest {
 
 export interface UpdateLeagueCapRequest extends Partial<CreateLeagueCapRequest> {
   is_active?: boolean;
+}
+
+// Tipos para Draft Picks
+export interface DraftPick {
+  id: number;
+  season_id: number;
+  player_id?: number | null;
+  team_id: number;
+  pick_number: number;
+  is_added_to_2k: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDraftPickRequest {
+  season_id: number;
+  team_id: number;
+  pick_number: number;
+}
+
+export interface UpdateDraftPickRequest extends Partial<CreateDraftPickRequest> {
+  id: number;
+  is_added_to_2k?: boolean;
+  player_id?: number | null;
+}
+
+export interface DraftPickFilters {
+  season_id?: number;
+  team_id?: number;
+  is_added_to_2k?: boolean;
+}
+
+export interface DraftPickQueryParams extends PaginationParams, DraftPickFilters {}
+
+export interface AddPlayerToDraftPickRequest {
+  player_id: number;
+}
+
+export interface CreatePlayerForDraftPickRequest {
+  name: string;
+  position: string;
+  age: number;
+  ovr: number;
+} 
+
+// Tipos para Season Awards
+export interface SeasonAwards {
+  id: number;
+  season_id: number;
+  mvp_player_id?: number | null;
+  mvp_team_id?: number | null;
+  roy_player_id?: number | null;
+  roy_team_id?: number | null;
+  smoy_player_id?: number | null;
+  smoy_team_id?: number | null;
+  dpoy_player_id?: number | null;
+  dpoy_team_id?: number | null;
+  mip_player_id?: number | null;
+  mip_team_id?: number | null;
+  coy_user_id?: number | null;
+  coy_team_id?: number | null;
+  created_at: string;
+  // updated_at: string;
+}
+
+export interface CreateSeasonAwardsRequest {
+  season_id: number;
+  mvp_player_id?: number | null;
+  mvp_team_id?: number | null;
+  roy_player_id?: number | null;
+  roy_team_id?: number | null;
+  smoy_player_id?: number | null;
+  smoy_team_id?: number | null;
+  dpoy_player_id?: number | null;
+  dpoy_team_id?: number | null;
+  mip_player_id?: number | null;
+  mip_team_id?: number | null;
+  coy_user_id?: number | null;
+  coy_team_id?: number | null;
+}
+
+export interface UpdateSeasonAwardsRequest extends Partial<CreateSeasonAwardsRequest> {
+  id: number;
+}
+
+export interface SeasonAwardsWithDetails extends SeasonAwards {
+  season?: {
+    id: number;
+    season_number: number;
+    year: string;
+  };
+  mvp_player?: {
+    id: number;
+    name: string;
+    position: string;
+    ovr: number;
+  } | null;
+  mvp_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
+  roy_player?: {
+    id: number;
+    name: string;
+    position: string;
+    ovr: number;
+  } | null;
+  roy_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
+  smoy_player?: {
+    id: number;
+    name: string;
+    position: string;
+    ovr: number;
+  } | null;
+  smoy_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
+  dpoy_player?: {
+    id: number;
+    name: string;
+    position: string;
+    ovr: number;
+  } | null;
+  dpoy_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
+  mip_player?: {
+    id: number;
+    name: string;
+    position: string;
+    ovr: number;
+  } | null;
+  mip_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
+  coy_user?: {
+    id: number;
+    name: string;
+    email: string;
+  } | null;
+  coy_team?: {
+    id: number;
+    name: string;
+    abbreviation: string;
+  } | null;
 } 

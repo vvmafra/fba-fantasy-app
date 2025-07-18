@@ -71,7 +71,6 @@ export const authStorage = {
   // Salvar dados de autenticação
   saveAuth: (data: GoogleLoginResponse['data']) => {
     try {
-      console.log('💾 Salvando dados de autenticação...');
       const expiresAt = Date.now() + data.expiresIn;
       
       if (isLocalStorageAvailable()) {
@@ -80,7 +79,6 @@ export const authStorage = {
         localStorage.setItem(AUTH_KEYS.USER, JSON.stringify(data.user));
         localStorage.setItem(AUTH_KEYS.EXPIRES_AT, expiresAt.toString());
         localStorage.setItem(AUTH_KEYS.USER_ID, data.user.id);
-        console.log('✅ Dados salvos no localStorage');
       } else {
         console.warn('⚠️ localStorage não disponível, dados não salvos');
       }
@@ -154,7 +152,6 @@ export const authStorage = {
       const buffer = 15 * 60 * 1000; // 15 minutos em millisegundos
       const isExpired = Date.now() + buffer >= parseInt(expiresAt);
       
-      console.log('⏰ Token expirado:', isExpired, 'Expira em:', new Date(parseInt(expiresAt)));
       return isExpired;
     } catch (error) {
       console.error('🚨 Erro ao verificar expiração do token:', error);
@@ -174,7 +171,6 @@ export const authStorage = {
       const hasData = !!(token && refreshToken && user);
       const notExpired = !authStorage.isTokenExpired();
       
-      console.log('🔍 Verificação de auth válida:', { hasData, notExpired });
       return hasData && notExpired;
     } catch (error) {
       console.error('🚨 Erro ao verificar autenticação válida:', error);
@@ -185,14 +181,12 @@ export const authStorage = {
   // Limpar dados de autenticação
   clearAuth: () => {
     try {
-      console.log('🗑️ Limpando dados de autenticação...');
       if (isLocalStorageAvailable()) {
         localStorage.removeItem(AUTH_KEYS.TOKEN);
         localStorage.removeItem(AUTH_KEYS.REFRESH_TOKEN);
         localStorage.removeItem(AUTH_KEYS.USER);
         localStorage.removeItem(AUTH_KEYS.EXPIRES_AT);
         localStorage.removeItem(AUTH_KEYS.USER_ID);
-        console.log('✅ Dados de autenticação limpos');
       }
     } catch (error) {
       console.error('🚨 Erro ao limpar dados de autenticação:', error);
@@ -202,14 +196,12 @@ export const authStorage = {
   // Atualizar dados de autenticação (após refresh)
   updateAuth: (data: RefreshTokenResponse['data']) => {
     try {
-      console.log('🔄 Atualizando dados de autenticação...');
       const expiresAt = Date.now() + data.expiresIn;
       
       if (isLocalStorageAvailable()) {
         localStorage.setItem(AUTH_KEYS.TOKEN, data.token);
         localStorage.setItem(AUTH_KEYS.REFRESH_TOKEN, data.refreshToken);
         localStorage.setItem(AUTH_KEYS.EXPIRES_AT, expiresAt.toString());
-        console.log('✅ Dados de autenticação atualizados');
       }
     } catch (error) {
       console.error('🚨 Erro ao atualizar dados de autenticação:', error);
@@ -220,12 +212,11 @@ export const authStorage = {
 // Função para fazer refresh do token
 export const refreshAuthToken = async (): Promise<boolean> => {
   try {
-    console.log('🔄 Tentando renovar token...');
     const userId = authStorage.getUserId();
     const refreshToken = authStorage.getRefreshToken();
 
     if (!userId || !refreshToken) {
-      console.log('❌ Dados insuficientes para renovar token');
+      console.error('❌ Dados insuficientes para renovar token');
       return false;
     }
 
@@ -241,7 +232,7 @@ export const refreshAuthToken = async (): Promise<boolean> => {
     });
 
     if (!response.ok) {
-      console.log('❌ Falha na resposta do servidor:', response.status);
+      console.error('❌ Falha na resposta do servidor:', response.status);
       throw new Error('Falha no refresh do token');
     }
 
@@ -249,11 +240,10 @@ export const refreshAuthToken = async (): Promise<boolean> => {
     
     if (data.success && data.data) {
       authStorage.updateAuth(data.data);
-      console.log('✅ Token renovado com sucesso');
       return true;
     }
 
-    console.log('❌ Resposta inválida do servidor');
+    console.error('❌ Resposta inválida do servidor');
     return false;
   } catch (error) {
     console.error('🚨 Erro ao fazer refresh do token:', error);
@@ -265,19 +255,15 @@ export const refreshAuthToken = async (): Promise<boolean> => {
 // Função para verificar e renovar token automaticamente
 export const ensureValidToken = async (): Promise<boolean> => {
   try {
-    console.log('🔍 Verificando validade do token...');
     
     if (!authStorage.hasValidAuth()) {
-      console.log('❌ Sem autenticação válida');
       return false;
     }
 
     if (authStorage.isTokenExpired()) {
-      console.log('⏰ Token expirado, tentando renovar...');
       return await refreshAuthToken();
     }
 
-    console.log('✅ Token válido');
     return true;
   } catch (error) {
     console.error('🚨 Erro ao verificar token:', error);

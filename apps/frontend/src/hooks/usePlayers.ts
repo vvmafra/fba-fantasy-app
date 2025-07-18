@@ -17,7 +17,7 @@ export const playerKeys = {
 // Hook para buscar todos os players
 export const usePlayers = (params?: PlayerQueryParams & { getAll?: boolean }) => {
   const queryParams = params?.getAll 
-    ? { ...params, limit: 1000, page: 1 } // Força buscar todos
+    ? { ...params, limit: 999999, page: 1 } // Força buscar todos sem paginação
     : params;
     
   return useQuery({
@@ -86,11 +86,20 @@ export const useCreatePlayer = (teamId?: number) => {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro!",
-        description: error.response?.data?.message || "Erro ao criar jogador.",
-        variant: "destructive",
-      });
+      // Tratar especificamente o erro de jogador já existente
+      if (error.response?.status === 409) {
+        toast({
+          title: "Jogador já existe!",
+          description: error.response?.data?.message || "Já existe um jogador com este nome no sistema.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro!",
+          description: error.response?.data?.message || "Erro ao criar jogador.",
+          variant: "destructive",
+        });
+      }
     },
   });
 };
@@ -243,5 +252,14 @@ export const useAllPlayersByTeam = (teamId: number) => {
     queryFn: () => playerService.getAllPlayersByTeam(teamId),
     enabled: !!teamId,
     staleTime: 3 * 60 * 1000, // 3 minutos
+  });
+};
+
+// Hook para buscar todos os players sem paginação
+export const useAllPlayers = () => {
+  return useQuery({
+    queryKey: [...playerKeys.all, 'all'],
+    queryFn: () => playerService.getAllPlayersWithoutPagination(),
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 };

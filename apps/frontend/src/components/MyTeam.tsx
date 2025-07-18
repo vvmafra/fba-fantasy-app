@@ -326,12 +326,14 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
               {/* Nome, idade e OVR */}
               <div className="flex-1 flex items-center min-w-0 ml-2 sm:ml-3">
                 <div className="flex-1 min-w-0">
-                  <h3
-                    className="font-semibold truncate flex-1 min-w-0 text-[15px] sm:text-md"
-                    title={player.name}
-                  >
-                    {isMobile ? formatPlayerName(player.name) : player.name}
-                  </h3>
+                  <div className="flex items-center space-x-2">
+                    <h3
+                      className="font-semibold text-sm sm:text-md truncate"
+                      title={player.name}
+                    >
+                      {player.name}
+                    </h3>
+                  </div>
                   {isEditing ? (
                     <input
                       type="number"
@@ -509,7 +511,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
       <Card className="bg-gradient-to-r from-nba-dark to-nba-blue text-white">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span className="font-bold">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
+            <span className="font-bold text-md sm:text-lg">{team?.data?.name}  -  {team?.data?.owner_name || 'Sem dono'}</span>
           </CardTitle>
         </CardHeader>
         <CardContent>

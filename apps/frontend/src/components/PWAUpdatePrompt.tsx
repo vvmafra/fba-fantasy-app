@@ -35,7 +35,6 @@ const PWAUpdatePrompt = () => {
       await Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName.startsWith('fba-cache-')) {
-            console.log('🗑️ Limpando cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
@@ -46,7 +45,6 @@ const PWAUpdatePrompt = () => {
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(
           registrations.map(registration => {
-            console.log('🔄 Atualizando service worker');
             return registration.update();
           })
         );

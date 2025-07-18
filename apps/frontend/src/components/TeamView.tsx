@@ -171,7 +171,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
             <div className="flex-1 ml-3 min-w-0">
               <div className="flex items-center space-x-2">
                 <h3
-                  className="font-semibold text-md truncate"
+                  className="font-semibold text-sm sm:text-md truncate"
                   title={player.name}
                 >
                   {player.name}

@@ -145,9 +145,6 @@ const SeasonsPage = () => {
   const handleNewCap = () => {
     const currentAverage = currentAverageCapResponse?.data?.average_cap || 0;
     const lastCap = lastLeagueCapResponse?.data?.[0]; // Primeiro da lista (mais recente)
-
-    console.log(currentAverage);
-    console.log(lastCap);
     
     let minCap = lastCap?.min_cap || 0;
     let maxCap = lastCap?.max_cap || 0;

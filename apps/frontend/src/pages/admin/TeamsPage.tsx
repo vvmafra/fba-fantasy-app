@@ -166,7 +166,7 @@ const TeamsPage = () => {
   };
 
   const handleAddTeam = () => {
-    console.log('Adicionar time');
+    console.log('Adicionar time (PÓS MVP)');
     // TODO: Implementar adição
   };
 

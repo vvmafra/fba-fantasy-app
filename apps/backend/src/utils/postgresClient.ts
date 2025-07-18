@@ -23,7 +23,6 @@ export const checkPostgresConnection = async () => {
     const client = await pool.connect();
     await client.query('SELECT NOW()');
     client.release();
-    console.log('✅ Conexão PostgreSQL estabelecida com sucesso');
     return true;
   } catch (error) {
     console.error('❌ Erro na conexão PostgreSQL:', error);

@@ -54,15 +54,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Verificar se já atualizamos recentemente
       const now = Date.now();
       if (now - lastUserDataUpdate < USER_DATA_CACHE_DURATION) {
-        console.log('⏭️ Dados do usuário ainda em cache, pulando atualização');
         return;
       }
 
-      console.log('🔄 Atualizando dados do usuário...');
       
       const token = authStorage.getToken();
       if (!token) {
-        console.log('❌ Sem token para atualizar dados');
         return;
       }
 
@@ -78,7 +75,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
-          console.log('✅ Dados do usuário atualizados:', data.data);
           
           // Atualizar dados no localStorage
           const currentUserData = authStorage.getUser();
@@ -92,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
       } else {
-        console.log('❌ Falha ao atualizar dados do usuário:', response.status);
+        console.error('❌ Falha ao atualizar dados do usuário:', response.status);
       }
     } catch (error) {
       console.error('🚨 Erro ao atualizar dados do usuário:', error);
@@ -102,25 +98,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Função para verificar autenticação
   const checkAuth = async (): Promise<boolean> => {
     try {
-      console.log('🔍 Verificando autenticação...');
       
       // Primeiro, verificar se há dados no localStorage
       const hasStoredAuth = authStorage.hasValidAuth();
-      console.log('📦 Dados de auth no localStorage:', hasStoredAuth);
       
       if (!hasStoredAuth) {
-        console.log('❌ Sem dados de autenticação válidos');
+        console.error('❌ Sem dados de autenticação válidos');
         return false;
       }
 
       // Verificar se o token está expirado e tentar renovar
       const isValid = await ensureValidToken();
-      console.log('✅ Token válido:', isValid);
       
       if (isValid) {
         const userData = authStorage.getUser();
         if (userData) {
-          console.log('👤 Usuário encontrado:', userData.email);
           setUser(userData);
           
           // Verificar se os dados do usuário estão atualizados
@@ -130,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      console.log('❌ Falha na verificação de autenticação');
+      console.error('❌ Falha na verificação de autenticação');
       return false;
     } catch (error) {
       console.error('🚨 Erro ao verificar autenticação:', error);
@@ -140,7 +132,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Função para logout
   const logout = () => {
-    console.log('🚪 Fazendo logout...');
     authStorage.clearAuth();
     setUser(null);
     window.location.href = '/';
@@ -149,7 +140,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Verificar autenticação na inicialização
   useEffect(() => {
     const initializeAuth = async () => {
-      console.log('🚀 Inicializando autenticação...');
       setIsLoading(true);
       
       try {
@@ -178,7 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const interval = setInterval(async () => {
       if (user) {
-        console.log('⏰ Verificação periódica de autenticação...');
         await checkAuth();
       }
     }, 15 * 60 * 1000); // 15 minutos
@@ -190,14 +179,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (!document.hidden && user) {
-        console.log('👁️ Aplicação voltou ao foco, verificando autenticação...');
         await checkAuth();
       }
     };
 
     const handleFocus = async () => {
       if (user) {
-        console.log('🎯 Janela ganhou foco, verificando autenticação...');
         await checkAuth();
       }
     };

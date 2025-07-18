@@ -10,6 +10,8 @@ import deadlineRoutes from './deadlineRoutes.js';
 import tradeRoutes from './tradeRoutes.js';
 import userRoutes from './userRoutes.js';
 import leagueCapRoutes from './leagueCapRoutes.js';
+import draftPickRoutes from './draftPickRoutes.js';
+import seasonAwardsRoutes from './seasonAwardsRoutes.js';
 
 const router = Router();
 
@@ -34,5 +36,7 @@ router.use('/deadlines', deadlineRoutes);
 router.use('/trades', tradeRoutes);
 router.use('/users', userRoutes);
 router.use('/league-cap', leagueCapRoutes);
+router.use('/draft-picks', draftPickRoutes);
+router.use('/season-awards', seasonAwardsRoutes);
 
 export default router; 

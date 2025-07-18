@@ -144,9 +144,14 @@ export default function RostersSeasonPage() {
 
   // Função para obter nome abreviado (primeira letra + sobrenome)
   const getAbbreviatedName = (fullName: string) => {
-    const parts = fullName.split(' ');
-    if (parts.length >= 2) {
-      return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+    const parts = fullName.trim().split(' ');
+    if (parts.length >= 3) {
+      // Inicial do primeiro nome + dois últimos sobrenomes
+      return `${parts[0][0]}. ${parts[parts.length - 2]} ${parts[parts.length - 1]}`;
+    }
+    if (parts.length === 2) {
+      // Inicial do primeiro nome + último sobrenome
+      return `${parts[0][0]}. ${parts[1]}`;
     }
     return fullName; // Se não tiver sobrenome, retorna o nome completo
   };

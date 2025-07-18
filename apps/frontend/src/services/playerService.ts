@@ -78,6 +78,10 @@ export const playerService = {
   getAllPlayers: (params?: PlayerQueryParams) =>
     apiRequest.get<Player[]>('/players', params),
 
+  // Buscar todos os players sem paginação
+  getAllPlayersWithoutPagination: () =>
+    apiRequest.get<Player[]>('/players/all'),
+
   // Buscar player por ID
   getPlayerById: (id: number) =>
     apiRequest.get<Player>(`/players/${id}`),

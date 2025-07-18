@@ -15,7 +15,6 @@ const forcePWARefresh = () => {
       cacheNames.forEach(cacheName => {
         if (cacheName.startsWith('fba-cache-')) {
           caches.delete(cacheName);
-          console.log('🗑️ Cache limpo:', cacheName);
         }
       });
     });
@@ -24,7 +23,6 @@ const forcePWARefresh = () => {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       registrations.forEach(registration => {
         registration.update();
-        console.log('🔄 Service worker atualizado');
       });
     });
   }

@@ -33,6 +33,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import RostersPlayoffsPage from "./pages/admin/RostersPlayoffsPage";
 import TradesAdminPage from "./pages/admin/TradesAdminPage";
+import DraftPicksPage from "./pages/admin/DraftPicksPage";
+import AwardsPage from "./pages/admin/AwardsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,9 +52,7 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const checkAuthentication = async () => {
       if (!isLoading && !user) {
-        console.log('🔍 AuthGuard - Verificando autenticação...');
         const isAuthenticated = await checkAuth();
-        console.log('✅ AuthGuard - Verificação concluída:', isAuthenticated);
       }
     };
 
@@ -110,6 +110,8 @@ const App = () => (
                 <Route path="rosters-season" element={<RostersSeasonPage />} />
                 <Route path="rosters-playoffs" element={<RostersPlayoffsPage />} />
                 <Route path="trades" element={<TradesAdminPage />} />
+                <Route path="draft-picks" element={<DraftPicksPage />} />
+                <Route path="awards" element={<AwardsPage />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

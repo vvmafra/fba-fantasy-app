@@ -17,6 +17,7 @@ const router = Router();
 // Rotas GET
 router.get('/test', PlayerController.testConnection);
 router.get('/', validate(playerQuerySchema), PlayerController.getAllPlayers);
+router.get('/all', PlayerController.getAllPlayersWithoutPagination);
 // router.get('/free-agents', PlayerController.getFreeAgents);
 router.get('/team/:team_id', PlayerController.getPlayersByTeam);
 // router.get('/position/:position', PlayerController.getPlayersByPosition);

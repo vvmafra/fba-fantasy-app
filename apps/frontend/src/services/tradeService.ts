@@ -182,7 +182,7 @@ export const tradeService = {
         tradesUsed: number;
         tradesLimit: number;
       }>;
-    }>(`/trades/limits/${tradeId}`),
+    }>(`/trades/${tradeId}/trade-limits`),
 
   // Rejeitar trades pendentes após deadline (admin apenas)
   rejectPendingTradesAfterDeadline: () =>

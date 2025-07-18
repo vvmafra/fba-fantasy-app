@@ -97,6 +97,25 @@ export class PlayerController {
     }
   });
 
+  // GET /api/v1/players/all - Listar todos os players sem paginação
+  static getAllPlayersWithoutPagination = asyncHandler(async (req: Request, res: Response) => {
+    try {
+      const players = await PlayerService.getAllPlayersWithoutPagination();
+      
+      return res.status(200).json({
+        success: true,
+        data: players
+      });
+    } catch (error) {
+      console.error('💥 Erro no controller:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: error instanceof Error ? error.message : 'Erro desconhecido'
+      });
+    }
+  });
+
   // GET /api/v1/players/free-agents - Listar Free Agents
   // static getFreeAgents = asyncHandler(async (req: Request, res: Response) => {
   //   const players = await PlayerService.getFreeAgents();

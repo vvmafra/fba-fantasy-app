@@ -132,6 +132,20 @@ export class PlayerService {
     try {
       this.checkPostgresClient();
       
+      // Verificar se já existe um jogador com o mesmo nome
+      const { rows: existingPlayers } = await pool.query(
+        'SELECT id, name, team_id FROM players WHERE LOWER(name) = LOWER($1)',
+        [playerData.name]
+      );
+      
+      if (existingPlayers.length > 0) {
+        const existingPlayer = existingPlayers[0];
+        throw createError(
+          `Já existe um jogador chamado "${existingPlayer.name}" no sistema.`,
+          409
+        );
+      }
+      
       // Buscar o season_id ativo
       const { rows: seasonRows } = await pool.query('SELECT id FROM seasons WHERE is_active = true LIMIT 1');
       
@@ -397,6 +411,19 @@ export class PlayerService {
       this.checkPostgresClient();
       
       const { rows } = await pool.query('SELECT * FROM players WHERE team_id IS NULL ORDER BY name');
+
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Buscar todos os players sem paginação
+  static async getAllPlayersWithoutPagination(): Promise<Player[]> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query('SELECT * FROM players ORDER BY name');
 
       return rows;
     } catch (error) {

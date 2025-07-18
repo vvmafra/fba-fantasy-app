@@ -84,21 +84,21 @@ const AdminMenu = ({ children }: AdminMenuProps) => {
         },
         {
           icon: Plus,
-          label: 'Draft',
-          description: 'Adicionar jogadores do draft',
-          href: '/admin/draft'
-        },
-        {
-          icon: Award,
-          label: 'Premiações',
-          description: 'Gerenciar premiações da temporada',
-          href: '/admin/awards'
-        }
+          label: 'Jogadores e Draft',
+          description: 'Gerenciar jogadores e draft',
+          href: '/admin/draft-picks'
+        }       
       ]
     },
     {
       title: 'Estatísticas e Rankings',
       items: [
+        {
+          icon: Award,
+          label: 'Premiações jogadores',
+          description: 'Gerenciar premiações individuais',
+          href: '/admin/awards'
+        },
         {
           icon: BarChart3,
           label: 'Classificação dos Times',
