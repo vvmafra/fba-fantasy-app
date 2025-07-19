@@ -13,6 +13,8 @@ import leagueCapRoutes from './leagueCapRoutes.js';
 import draftPickRoutes from './draftPickRoutes.js';
 import seasonAwardsRoutes from './seasonAwardsRoutes.js';
 import teamStandingRoutes from './teamStandingRoutes.js';
+import editionRankingRoutes from './editionRankingRoutes.js';
+import playoffImageRoutes from './playoffImageRoutes.js';
 
 const router = Router();
 
@@ -40,5 +42,7 @@ router.use('/league-cap', leagueCapRoutes);
 router.use('/draft-picks', draftPickRoutes);
 router.use('/season-awards', seasonAwardsRoutes);
 router.use('/team-standings', teamStandingRoutes);
+router.use('/edition-ranking', editionRankingRoutes);
+router.use('/playoff-images', playoffImageRoutes);
 
 export default router; 

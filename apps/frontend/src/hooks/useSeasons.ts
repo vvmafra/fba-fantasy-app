@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { seasonService, Season, UpdateSeasonData } from '@/services/seasonService';
+import { seasonService, Season, UpdateSeasonData, AdvanceSeasonResponse, GoBackSeasonResponse } from '@/services/seasonService';
 import { useToast } from '@/hooks/use-toast';
 
 // Hook para buscar todas as temporadas
@@ -45,9 +45,10 @@ export const useAdvanceToNextSeason = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
       queryClient.invalidateQueries({ queryKey: ['active-season'] });
+      console.log(data.data)
       toast({
         title: 'Sucesso!',
-        description: `Avançou para Temporada ${data.data?.season_number} (${data.data?.year})`,
+        description: `Avançou para Temporada ${data.data?.season?.season_number} (${data.data?.season?.year})`,
       });
     },
     onError: (error: any) => {
@@ -72,7 +73,7 @@ export const useGoBackToPreviousSeason = () => {
       queryClient.invalidateQueries({ queryKey: ['active-season'] });
       toast({
         title: 'Sucesso!',
-        description: `Voltou para Temporada ${data.data?.season_number} (${data.data?.year})`,
+        description: `Voltou para Temporada ${data.data?.season?.season_number} (${data.data?.season?.year})`,
       });
     },
     onError: (error: any) => {

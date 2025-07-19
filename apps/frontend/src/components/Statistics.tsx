@@ -3,8 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Trophy, Calendar, Upload, TrendingUp, Target } from 'lucide-react';
+import { BarChart3, Trophy, Calendar, Upload, TrendingUp, Target, Image as ImageIcon } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeams';
+import { useEditionRanking } from '@/hooks/useEditionRanking';
+import { usePlayoffImageBySeason } from '@/hooks/usePlayoffImages';
+import PlayoffImageModal from './PlayoffImageModal';
+import ImageFullscreenModal from './ImageFullscreenModal';
+import { playoffImageService } from '@/services/playoffImageService';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface TeamStats {
   teamName: string;
@@ -22,11 +29,47 @@ interface StatisticsProps {
 }
 
 const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
-  const [selectedSeason, setSelectedSeason] = useState<'regular' | 'playoffs'>('regular');
+  const [selectedSeason, setSelectedSeason] = useState<'edition' | 'playoffs'>('edition');
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
   
   // Buscar dados do time do usuário
   const { data: team } = useTeam(teamId || 1); // TODO: Pegar team_id do usuário logado
   const userTeamName = team?.data?.name || 'Los Angeles Lakers'; // Fallback para dados mock
+  
+  // Buscar dados do ranking de edição
+  const { data: editionRanking, isLoading: editionLoading } = useEditionRanking();
+  
+  // Buscar imagem dos playoffs (usando temporada atual como exemplo)
+  const { data: playoffImage } = usePlayoffImageBySeason(1); // TODO: Usar temporada atual
+  
+  // Hooks para funcionalidades admin
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Função para limpar imagens inválidas
+  const handleCleanupInvalidImages = async () => {
+    if (!confirm('Tem certeza que deseja limpar todas as imagens inválidas?')) return;
+
+    try {
+      const response = await playoffImageService.cleanupInvalidImages();
+      
+      toast({
+        title: 'Sucesso',
+        description: `${response.data.deletedCount} imagens inválidas foram removidas`,
+      });
+
+      // Invalidar cache para atualizar a lista
+      queryClient.invalidateQueries({ queryKey: ['playoff-images'] });
+    } catch (error) {
+      console.error('Erro ao limpar imagens:', error);
+      toast({
+        title: 'Erro',
+        description: 'Erro ao limpar imagens inválidas',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Mock data - será substituído por dados reais do Supabase
   const regularSeasonStats: TeamStats[] = [
@@ -44,7 +87,7 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
     { teamName: 'Milwaukee Bucks', wins: 6, losses: 4, pointsFor: 1200, pointsAgainst: 1180, streak: 'W2', rank: 4 },
   ];
 
-  const currentStats = selectedSeason === 'regular' ? regularSeasonStats : playoffStats;
+  const currentStats = selectedSeason === 'edition' ? regularSeasonStats : playoffStats;
   const userTeamStats = currentStats.find(team => team.teamName === userTeamName);
 
   const StatsTable = ({ stats }: { stats: TeamStats[] }) => (
@@ -86,64 +129,70 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
   return (
     <div className="p-4 pb-20 space-y-6">
       {/* Team Performance Overview */}
-      {userTeamStats && (
-        <Card className="bg-gradient-to-r from-nba-blue to-nba-dark text-white">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>{userTeamName}</span>
-              <Badge variant="secondary" className="bg-nba-orange">
-                #{userTeamStats.rank}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold">{userTeamStats.wins}</p>
-                <p className="text-sm opacity-80">Vitórias</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{userTeamStats.losses}</p>
-                <p className="text-sm opacity-80">Derrotas</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">
-                  {((userTeamStats.wins / (userTeamStats.wins + userTeamStats.losses)) * 100).toFixed(1)}%
-                </p>
-                <p className="text-sm opacity-80">Aproveit.</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{userTeamStats.streak}</p>
-                <p className="text-sm opacity-80">Sequência</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Season Toggle */}
-      <Tabs value={selectedSeason} onValueChange={(value) => setSelectedSeason(value as 'regular' | 'playoffs')} className="w-full">
+      <Tabs value={selectedSeason} onValueChange={(value) => setSelectedSeason(value as 'edition' | 'playoffs')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="regular" className="flex items-center">
-            <Calendar size={16} className="mr-2" />
-            Temporada Regular
+          <TabsTrigger value="edition" className="flex items-center">
+            <BarChart3 size={16} className="mr-2" />
+            Ranking Edição
           </TabsTrigger>
           <TabsTrigger value="playoffs" className="flex items-center">
-            <Trophy size={16} className="mr-2" />
-            Playoffs
+            <ImageIcon size={16} className="mr-2" />
+            Últimos Playoffs
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="regular" className="space-y-4">
+        <TabsContent value="edition" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <BarChart3 className="mr-2" />
-                Classificação - Temporada Regular
+                Ranking de Edição
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <StatsTable stats={regularSeasonStats} />
+              {editionLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nba-blue mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Carregando ranking...</p>
+                </div>
+              ) : editionRanking?.data ? (
+                <div className="space-y-2">
+                  {editionRanking.data.map((team, index) => (
+                    <Card key={team.team_id} className={`${team.team_name === userTeamName ? 'ring-2 ring-nba-blue bg-blue-50' : ''}`}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-nba-dark text-white rounded-full flex items-center justify-center text-sm font-bold">
+                              {index + 1}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">{team.team_name}</h3>
+                              <p className="text-sm text-gray-600">
+                                {team.championships} títulos • {team.finals_appearances} finais • {team.conference_finals} finais de conf.
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="text-right">
+                            <Badge className="mb-1 bg-nba-orange">
+                              {team.total_points} pts
+                            </Badge>
+                            <p className="text-xs text-gray-500">
+                              {team.standings_points} standings • {team.awards_points} awards
+                            </p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-600">
+                  Nenhum dado de ranking disponível
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -152,101 +201,84 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Trophy className="mr-2" />
-                Classificação - Playoffs
+                <ImageIcon className="mr-2" />
+                Últimos Playoffs
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <StatsTable stats={playoffStats} />
+              {playoffImage?.data?.image_url ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <img 
+                      src={playoffImage.data.image_url} 
+                      alt={playoffImage.data.title || 'Imagem dos playoffs'}
+                      className="w-full h-auto rounded-lg shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setIsFullscreenModalOpen(true)}
+                    />
+                    {isAdmin && (
+                      <div className="absolute top-2 right-2">
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="bg-white/90 hover:bg-white"
+                          onClick={() => setIsImageModalOpen(true)}
+                        >
+                          <Upload size={14} className="mr-1" />
+                          Editar
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{playoffImage.data.title}</h3>
+                    {playoffImage.data.description && (
+                      <p className="text-gray-600 mt-1">{playoffImage.data.description}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Enviado por {playoffImage.data.uploader_name} em {new Date(playoffImage.data.created_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <ImageIcon size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 mb-2">Nenhuma imagem disponível</h3>
+                  <p className="text-gray-500 mb-4">Ainda não há imagens dos playoffs para esta temporada.</p>
+                  {isAdmin && (
+                    <Button 
+                      className="bg-nba-orange hover:bg-nba-orange/90"
+                      onClick={() => setIsImageModalOpen(true)}
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload Imagem
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <TrendingUp size={24} className="mx-auto mb-2 text-nba-blue" />
-            <p className="text-lg font-bold">+5.2</p>
-            <p className="text-xs text-gray-600">Média de Pontos</p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Target size={24} className="mx-auto mb-2 text-nba-orange" />
-            <p className="text-lg font-bold">52.3%</p>
-            <p className="text-xs text-gray-600">FG%</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Recent Matches */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Últimos Jogos</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Badge className="bg-green-600">V</Badge>
-              <span className="font-medium">{userTeamName} 118 x 110 Warriors</span>
-            </div>
-            <span className="text-sm text-gray-500">Ontem</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Badge className="bg-green-600">V</Badge>
-              <span className="font-medium">{userTeamName} 125 x 120 Nuggets</span>
-            </div>
-            <span className="text-sm text-gray-500">3d atrás</span>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Badge variant="destructive">D</Badge>
-              <span className="font-medium">Celtics 130 x 118 {userTeamName}</span>
-            </div>
-            <span className="text-sm text-gray-500">1 sem atrás</span>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Admin Actions */}
-      {isAdmin && (
-        <Card className="border-2 border-dashed border-nba-orange">
-          <CardContent className="p-4 space-y-3">
-            <h3 className="font-semibold text-center">Painel Admin</h3>
-            <div className="grid grid-cols-1 gap-2">
-              <Button className="w-full bg-nba-orange hover:bg-nba-orange/90">
-                <Upload size={16} className="mr-2" />
-                Upload Screenshot
-              </Button>
-              <Button variant="outline" className="w-full">
-                Editar Estatísticas
-              </Button>
-              <Button variant="outline" className="w-full">
-                Gerenciar Temporadas
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Modal para upload/edição de imagens */}
+      <PlayoffImageModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        seasonId={1} // TODO: Usar temporada atual
+        existingImage={playoffImage?.data || null}
+      />
 
-      {/* Season Info */}
-      <Card className="bg-nba-light">
-        <CardContent className="p-4 text-center">
-          <h3 className="font-semibold mb-2">Temporada 2023-24</h3>
-          <p className="text-sm text-gray-600">
-            Regular: 82 jogos • Playoffs: Até 28 jogos
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Última atualização: {new Date().toLocaleDateString('pt-BR')}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Modal para visualização em tela cheia */}
+      <ImageFullscreenModal
+        isOpen={isFullscreenModalOpen}
+        onClose={() => setIsFullscreenModalOpen(false)}
+        imageUrl={playoffImage?.data?.image_url || ''}
+        title={playoffImage?.data?.title}
+        description={playoffImage?.data?.description}
+      />
     </div>
   );
 };

@@ -74,8 +74,12 @@ export class SeasonController {
 
   // POST /api/v1/seasons/go-back - Voltar para temporada anterior
   static goBackToPreviousSeason = asyncHandler(async (req: Request, res: Response) => {
-    const season = await SeasonService.goBackToPreviousSeason();
-    return res.status(200).json({ success: true, data: season, message: 'Voltou para temporada anterior com sucesso' });
+    const results = await SeasonService.goBackToPreviousSeason();
+    return res.status(200).json({ 
+      success: true, 
+      data: results,
+      message: `Voltou para temporada anterior com sucesso. Deadlines restauradas: ${results.deadlinesRestored}, Picks deletadas: ${results.picksDeleted}${results.assetsRemoved > 0 ? `, Assets de trade removidos: ${results.assetsRemoved}` : ''}`
+    });
   });
 
   // POST /api/v1/seasons/:id/activate - Alterar temporada ativa

@@ -18,6 +18,23 @@ export interface CreateSeasonData {
 
 export interface UpdateSeasonData extends Partial<CreateSeasonData> {}
 
+// Tipos para respostas específicas
+export interface AdvanceSeasonResponse {
+  season: Season;
+  tradesCancelled: number;
+  tradeLimitsReset: boolean;
+  draftPicksAdded: number;
+  draftPicksSeasonId: number;
+  deadlinesUpdated: number;
+}
+
+export interface GoBackSeasonResponse {
+  season: Season;
+  deadlinesRestored: number;
+  picksDeleted: number;
+  assetsRemoved: number;
+}
+
 // Serviço de Seasons
 export const seasonService = {
   // Buscar todas as temporadas
@@ -50,11 +67,11 @@ export const seasonService = {
 
   // Avançar para próxima temporada
   advanceToNextSeason: () =>
-    apiRequest.post<Season>('/seasons/advance-next'),
+    apiRequest.post<AdvanceSeasonResponse>('/seasons/advance-next'),
 
   // Voltar para temporada anterior
   goBackToPreviousSeason: () =>
-    apiRequest.post<Season>('/seasons/go-back'),
+    apiRequest.post<GoBackSeasonResponse>('/seasons/go-back'),
 
   // Alterar temporada ativa
   changeActiveSeason: (seasonId: number) =>
