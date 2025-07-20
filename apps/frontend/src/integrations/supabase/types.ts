@@ -487,17 +487,29 @@ export type Database = {
         Row: {
           id: string
           name: string
+          email: string
+          google_id: string | null
           role: string | null
+          refresh_token: string | null
+          token_updated_at: string | null
         }
         Insert: {
           id: string
           name: string
+          email: string
+          google_id?: string | null
           role?: string | null
+          refresh_token?: string | null
+          token_updated_at?: string | null
         }
         Update: {
           id?: string
           name?: string
+          email?: string
+          google_id?: string | null
           role?: string | null
+          refresh_token?: string | null
+          token_updated_at?: string | null
         }
         Relationships: []
       }

@@ -408,7 +408,10 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  google_id?: string | null;
   role: 'admin' | 'user';
+  refresh_token?: string | null;
+  token_updated_at?: string | null;
 }
 
 export interface CreateUserRequest {

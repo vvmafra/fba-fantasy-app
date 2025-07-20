@@ -54,7 +54,7 @@ const AdminMenu = ({ children }: AdminMenuProps) => {
           href: '/admin/teams'
         },
         {
-          icon: Calendar,
+          icon: Trophy,
           label: 'Temporadas',
           description: 'Gerenciar temporadas e CAP',
           href: '/admin/seasons'

@@ -127,7 +127,7 @@ export class AuthService {
       
       const { rows } = await pool.query(
         `UPDATE users 
-         SET google_id = $1, updated_at = NOW()
+         SET google_id = $1
          WHERE id = $2
          RETURNING *`,
         [googleId, userId]
