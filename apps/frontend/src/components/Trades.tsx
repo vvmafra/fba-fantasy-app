@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade, useExecutedTradesCount, useTradeLimits } from '@/hooks/useTrades';
 import { useTeams } from '@/hooks/useTeams';
-import { useSeasonsFromActive } from '@/hooks/useSeasons';
+import { useSeasonsFromActive, useActiveSeason } from '@/hooks/useSeasons';
 import { useTradeDeadline } from '@/hooks/useDeadlines';
 import { TradeWithDetails } from '@/services/tradeService';
 import TradeProposal from './forms/tradeProposal';
@@ -23,7 +23,6 @@ interface TradesProps {
 const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const [selectedTrade, setSelectedTrade] = useState<number | null>(null);
   const [newComment, setNewComment] = useState('');
-  const [currentSeason, setCurrentSeason] = useState<number>(1);
   const [showMyExecuted, setShowMyExecuted] = useState(true);
   const [showMyPending, setShowMyPending] = useState(true);
   const [showLeagueExecuted, setShowLeagueExecuted] = useState(true);
@@ -32,14 +31,16 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   
 
   // Hooks
+  const { data: activeSeasonData } = useActiveSeason();
   const { data: tradesData } = useTrades({ status: 'executed', sortBy: 'executed_at', sortOrder: 'desc' });
-  const { data: myTradesData, refetch: refetchMyTrades } = useTradesByTeam(teamId || 0, currentSeason);
-  const { data: countsData } = useTradeCounts(currentSeason);
+  const { data: myTradesData, refetch: refetchMyTrades } = useTradesByTeam(teamId || 0, activeSeasonData?.data?.id || 1);
+  const { data: countsData } = useTradeCounts(activeSeasonData?.data?.id || 1);
   const { data: teamsData } = useTeams();
   const { data: seasonsData } = useSeasonsFromActive();
   const { deadline: tradeDeadline, loading: deadlineLoading } = useTradeDeadline();
   
   // Calcular período atual para limite de trades (a cada 2 temporadas)
+  const currentSeason = activeSeasonData?.data?.season_number || 1;
   const seasonStart = Math.floor((currentSeason - 1) / 2) * 2 + 1;
   const seasonEnd = seasonStart + 1;
   
