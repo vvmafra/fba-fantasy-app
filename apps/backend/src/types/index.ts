@@ -277,7 +277,7 @@ export interface Deadline {
   description?: string;
   deadline_date: string; // Data no formato YYYY-MM-DD
   deadline_time: string; // Horário no formato HH:MM:SS
-  type: 'draft' | 'trade_deadline' | 'fa_deadline' | 'regular_roster' | 'playoffs_roster' | 'regular_season' | 'playoffs' | 'other';
+  type: 'draft' | 'trade_deadline' | 'fa_deadline' | 'regular_roster' | 'playoffs_roster' | 'regular_season' | 'playoffs' | 'bets' | 'other';
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -289,7 +289,7 @@ export interface CreateDeadlineRequest {
   description?: string;
   deadline_date: string; // Data no formato YYYY-MM-DD
   deadline_time: string; // Horário no formato HH:MM:SS
-  type: 'draft' | 'trade_deadline' | 'fa_deadline' | 'regular_roster' | 'playoffs_roster' | 'regular_season' | 'playoffs' | 'other';
+  type: 'draft' | 'trade_deadline' | 'fa_deadline' | 'regular_roster' | 'playoffs_roster' | 'regular_season' | 'playoffs' | 'bets' | 'other';
   is_active?: boolean;
 }
 

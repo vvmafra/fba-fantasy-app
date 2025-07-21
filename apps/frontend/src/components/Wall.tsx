@@ -132,6 +132,8 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
         return <FileText className="h-4 w-4" />;
       case 'playoffs':
         return <Trophy className="h-4 w-4" />;
+      case 'bets':
+        return <Target className="h-4 w-4" />;
       default:
         return <Calendar className="h-4 w-4" />;
     }
@@ -144,6 +146,8 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
       case 'trade_deadline':
         return '#010d00';
       case 'playoffs':
+        return '#010d00';
+      case 'bets':
         return '#010d00';
       default:
         return '#010d00';
@@ -419,6 +423,8 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                           if (link) {
                             window.open(link, '_blank');
                           }
+                        } else if (deadline.type === 'bets') {
+                          window.open('https://forms.gle/d558ChkM9Dp7fxvK9', '_blank');
                         } else if (deadline.type === 'regular_roster') {
                           setIsRosterModalOpen(true);
                         } else if (deadline.type === 'playoffs_roster') {
