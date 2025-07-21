@@ -37,7 +37,7 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Buscar usuários da API
-  const { data: usersResponse, isLoading, error } = useUsers({ sortBy: 'id', sortOrder: 'asc' });
+  const { data: usersResponse, isLoading, error } = useUsers({ sortBy: 'id', sortOrder: 'asc', limit: 1000 });
 
   const deleteUserMutation = useDeleteUser();
   const updateUserMutation = useUpdateUser();

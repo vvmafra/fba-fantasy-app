@@ -457,7 +457,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
       {/* New Trade Button */}
       <TradeProposal 
         teamId={teamId} 
-        isAdmin={isAdmin} 
+        // isAdmin={isAdmin} 
         onTradeCreated={refetchMyTrades}
         canProposeTrade={canProposeTrade}
         tradesRemaining={tradesRemaining}

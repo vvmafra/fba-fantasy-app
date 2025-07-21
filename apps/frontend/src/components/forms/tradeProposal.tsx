@@ -33,7 +33,7 @@ interface Participant {
   }>;
 }
 
-const TradeProposal = ({ teamId, isAdmin = false, onTradeCreated, canProposeTrade = true, tradesRemaining = 10 }: TradeProposalProps) => {
+const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesRemaining = 10 }: TradeProposalProps) => {
   const [open, setOpen] = useState(false);
   const [seasonId, setSeasonId] = useState<number>(1);
   const [participants, setParticipants] = useState<Participant[]>([]);
