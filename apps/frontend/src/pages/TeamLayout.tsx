@@ -45,7 +45,7 @@ const TeamLayout = () => {
       />
       
       <main className="pt-20">
-        <Outlet context={{ teamId, isAdmin: isOwnerOrAdmin }} />
+        <Outlet context={{ teamId, isAdmin: authAdmin }} />
       </main>
       
       <Navigation 
