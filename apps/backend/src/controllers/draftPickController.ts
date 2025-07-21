@@ -5,7 +5,6 @@ import { asyncHandler } from '../middlewares/errorHandler.js';
 export class DraftPickController {
   // GET /api/v1/draft-picks - Listar todos os draft picks
   static getAllDraftPicks = asyncHandler(async (req: Request, res: Response) => {
-    console.log('getAllDraftPicks');
     const params: any = {
       page: req.query['page'] ? parseInt(req.query['page'] as string) : 1,
       limit: req.query['limit'] ? parseInt(req.query['limit'] as string) : 100,

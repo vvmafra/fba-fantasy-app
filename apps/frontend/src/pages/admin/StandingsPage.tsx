@@ -146,12 +146,6 @@ const StandingsPage = () => {
   // Inicializar dados quando standings ou teams mudarem
   useEffect(() => {
     if (teams.length > 0 && !loading && selectedSeason) {
-      console.log('Inicializando dados:', { 
-        teamsLength: teams.length, 
-        standingsLength: standings.length, 
-        hasInitialized, 
-        selectedSeason 
-      });
       
       // Tentar carregar dados salvos do localStorage
       const savedData = loadFromLocalStorage(selectedSeason);
@@ -174,7 +168,6 @@ const StandingsPage = () => {
           });
         } else {
           // Usar dados salvos se disponíveis
-          console.log('Usando dados do localStorage:', validData.length, 'standings');
           setStandingsData(validData);
           setHasChanges(true); // Indicar que há mudanças não salvas
           setHasInitialized(true);
@@ -190,8 +183,6 @@ const StandingsPage = () => {
       
       // Criar um mapa dos standings existentes (pode estar vazio)
       const standingsMap = new Map(standings.map(s => [s.team_id, s]));
-      console.log('Standings do banco:', standings.length, 'items');
-      console.log('Times disponíveis:', teams.length, 'items');
       
       // Criar dados para todos os times, incluindo os que não têm standing
       const allTeamsData = teams.map(team => {
@@ -217,7 +208,6 @@ const StandingsPage = () => {
         };
       });
       
-      console.log('Dados finais criados:', allTeamsData.length, 'standings');
       setStandingsData(allTeamsData);
       setHasChanges(false);
       setHasInitialized(true);
@@ -362,8 +352,6 @@ const StandingsPage = () => {
           elimination_round
         };
       });
-
-      console.log('Dados a serem enviados:', standingsToSave);
       
       // Verificar se há valores inválidos
       const invalidData = standingsToSave.filter(s => 

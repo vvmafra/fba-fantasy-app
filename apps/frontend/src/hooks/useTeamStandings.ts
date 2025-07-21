@@ -30,13 +30,10 @@ export const useTeamStandings = () => {
   const fetchStandingsBySeason = useCallback(async (seasonId: number) => {
     setLoading(true);
     setError(null);
-    console.log('Iniciando fetchStandingsBySeason para temporada:', seasonId);
     
     try {
       const response = await teamStandingService.getStandingsBySeason(seasonId);
-      console.log('Resposta do servidor:', response);
       const standingsData = response.data || [];
-      console.log('Standings carregados:', standingsData.length, 'items');
       setStandings(standingsData);
     } catch (err) {
       console.error('Erro ao carregar standings:', err);

@@ -211,13 +211,6 @@ const DraftPicksPage = () => {
     return matchesTeam;
   });
 
-  // Debug temporário
-  console.log('Players Response:', playersResponse);
-  console.log('Filtered Players Count:', filteredPlayersForTransfer.length);
-  console.log('Transfer Filter Team:', transferFilterTeam);
-
-
-
   // Se não for admin, redireciona
   if (!isAdmin) {
     return <Navigate to="/" replace />;

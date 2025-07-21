@@ -170,8 +170,6 @@ export class TeamStandingController {
   // POST /api/v1/team-standings/bulk - Criar ou atualizar múltiplos standings
   static upsertManyStandings = asyncHandler(async (req: Request, res: Response) => {
     const { standings } = req.body;
-
-    console.log(standings);
     
     if (!Array.isArray(standings) || standings.length === 0) {
       res.status(400).json({ 

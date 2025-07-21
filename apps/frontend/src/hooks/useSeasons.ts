@@ -45,7 +45,6 @@ export const useAdvanceToNextSeason = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['seasons'] });
       queryClient.invalidateQueries({ queryKey: ['active-season'] });
-      console.log(data.data)
       toast({
         title: 'Sucesso!',
         description: `Avançou para Temporada ${data.data?.season?.season_number} (${data.data?.season?.year})`,

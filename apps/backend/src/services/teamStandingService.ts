@@ -204,9 +204,7 @@ export class TeamStandingService {
   // Criar novo standing
   static async createStanding(standingData: CreateTeamStandingRequest, client?: any): Promise<TeamStanding> {
     const { season_id, team_id, final_position, seed, elimination_round } = standingData;
-    
-    console.log(`Tentando criar standing: team_id=${team_id}, final_position=${final_position}, seed=${seed}, elimination_round=${elimination_round}`);
-    
+        
     // Validar se já existe um standing para este time nesta temporada (só se não estiver em transação)
     if (!client) {
       const existing = await this.getStandingBySeasonAndTeam(season_id, team_id);
@@ -222,7 +220,6 @@ export class TeamStandingService {
       RETURNING *
     `, [season_id, team_id, final_position, seed, elimination_round]);
     
-    console.log(`Standing criado com sucesso para time ${team_id}`);
     return rows[0];
   }
 
@@ -231,9 +228,7 @@ export class TeamStandingService {
     const fields = [];
     const values = [];
     let idx = 1;
-    
-    console.log(`Tentando atualizar standing ${id} com dados:`, standingData);
-    
+        
     if (standingData.season_id !== undefined) {
       fields.push(`season_id = $${idx++}`);
       values.push(standingData.season_id);
@@ -259,8 +254,6 @@ export class TeamStandingService {
     values.push(id);
     
     const sql = `UPDATE team_standings SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`;
-    console.log(`SQL de atualização:`, sql);
-    console.log(`Valores:`, values);
     
     const queryClient = client || pool;
     const { rows } = await queryClient.query(sql, values);
@@ -269,7 +262,6 @@ export class TeamStandingService {
       throw new Error('Standing não encontrado');
     }
     
-    console.log(`Standing atualizado com sucesso:`, rows[0]);
     return rows[0];
   }
 
@@ -289,9 +281,7 @@ export class TeamStandingService {
     
     try {
       await client.query('BEGIN');
-      
-      console.log(`Iniciando upsert de ${standings.length} standings...`);
-      
+            
       // Buscar todos os standings existentes de uma vez
       const seasonIds = [...new Set(standings.map(s => s.season_id))];
       const teamIds = standings.map(s => s.team_id);
@@ -313,18 +303,14 @@ export class TeamStandingService {
       
       for (let i = 0; i < standings.length; i += batchSize) {
         const batch = standings.slice(i, i + batchSize);
-        console.log(`Processando lote ${Math.floor(i/batchSize) + 1}/${Math.ceil(standings.length/batchSize)} (${batch.length} items)`);
         
         for (const standing of batch) {
           const { season_id, team_id, final_position, seed, elimination_round } = standing;
-          
-          console.log(`Processando time ${team_id}: final_position=${final_position}, seed=${seed}, elimination_round=${elimination_round}`);
-          
+                    
           // Verificar se já existe usando o mapa
           const existing = existingMap.get(`${season_id}-${team_id}`);
           
           if (existing) {
-            console.log(`Atualizando standing existente para time ${team_id}`);
             // Atualizar existente
             const updated = await this.updateStanding(existing.id, {
               id: existing.id,
@@ -334,7 +320,6 @@ export class TeamStandingService {
             }, client);
             results.push(updated);
           } else {
-            console.log(`Criando novo standing para time ${team_id}`);
             // Criar novo
             const created = await this.createStanding(standing, client);
             results.push(created);
@@ -343,7 +328,6 @@ export class TeamStandingService {
       }
       
       await client.query('COMMIT');
-      console.log(`Upsert concluído com sucesso! ${results.length} standings processados.`);
       return results;
       
     } catch (error) {

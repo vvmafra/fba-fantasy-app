@@ -77,8 +77,6 @@ export class DraftPickService {
       const { rows: countRows } = await pool.query(countSql, countValues);
       const total = parseInt(countRows[0].count);
 
-      console.log('rows', rows);
-
       return {
         success: true,
         data: rows,

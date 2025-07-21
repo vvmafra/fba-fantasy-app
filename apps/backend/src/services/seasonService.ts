@@ -275,14 +275,10 @@ export class SeasonService {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      
-      console.log(`addDraftPicksForNextSeason - nextSeasonId: ${nextSeasonId} (tipo: ${typeof nextSeasonId})`);
-      
+            
       // Calcular target_season_id como nextSeasonId + 5
       const targetSeasonId = Number(nextSeasonId) + 5;
-      
-      console.log(`addDraftPicksForNextSeason - targetSeasonId: ${targetSeasonId} (tipo: ${typeof targetSeasonId})`);
-      
+            
       // Buscar informações da temporada alvo para obter o ano
       let { rows: targetSeason } = await client.query(`
         SELECT year, season_number FROM seasons WHERE id = $1
@@ -316,10 +312,6 @@ export class SeasonService {
         targetSeason = newSeason;
         // Atualizar targetSeasonId para usar o ID real da temporada criada
         const actualTargetSeasonId = Number(newSeason[0].id);
-        console.log(`Temporada alvo criada: ${targetYear} (season_number: ${targetSeasonNumber}, id: ${actualTargetSeasonId})`);
-        
-        // Usar o ID real da temporada criada em vez do calculado
-        console.log(`Tentando inserir picks para nova temporada ${actualTargetSeasonId} (tipo: ${typeof actualTargetSeasonId})`);
         
         const { rowCount } = await client.query(`
           INSERT INTO picks (season_id, original_team_id, current_team_id, round)
@@ -337,8 +329,6 @@ export class SeasonService {
             2 as round
           FROM teams t
         `, [actualTargetSeasonId]);
-
-        console.log(`Adicionadas ${rowCount} picks para temporada ${actualTargetSeasonId} (ano ${targetYear})`);
         
         await client.query('COMMIT');
         return { added: rowCount || 0, targetSeasonId: actualTargetSeasonId, targetYear };
@@ -354,14 +344,12 @@ export class SeasonService {
       `, [Number(targetSeasonId)]);
       
       if (existingPicks[0].count > 0) {
-        console.log(`Picks já existem para temporada ${targetSeasonId}, pulando criação`);
         await client.query('COMMIT');
         return { added: 0, targetSeasonId: Number(targetSeasonId), targetYear, reason: 'Picks já existem' };
       }
       
       // Criar picks para cada time (1ª e 2ª rodada)
       // Cada time terá original_team_id e current_team_id iguais inicialmente
-      console.log(`Tentando inserir picks para temporada ${targetSeasonId} (tipo: ${typeof targetSeasonId})`);
       
       const { rowCount } = await client.query(`
         INSERT INTO picks (season_id, original_team_id, current_team_id, round)
@@ -379,8 +367,6 @@ export class SeasonService {
           2 as round
         FROM teams t
       `, [Number(targetSeasonId)]);
-
-      console.log(`Adicionadas ${rowCount} picks para temporada ${targetSeasonId} (ano ${targetYear})`);
       
       await client.query('COMMIT');
       return { added: rowCount || 0, targetSeasonId: Number(targetSeasonId), targetYear };
