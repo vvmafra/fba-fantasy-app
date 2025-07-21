@@ -12,6 +12,9 @@ import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import ModalAddPlayer from './ModalAddPlayer';
 import TeamPicks from './TeamPicks';
+import { useTeamFuturePicks } from '@/hooks/usePicks';
+import { useExecutedTradesCount } from '@/hooks/useTrades';
+import { useActiveSeason } from '@/hooks/useSeasons';
 
 interface MyTeamProps {
   isAdmin: boolean;
@@ -60,10 +63,24 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const { data: teamPlayersResponse, isLoading, error } = usePlayersByTeam(numericTeamId);
   const { data: team, isLoading: teamLoading, error: teamError } = useTeam(numericTeamId);
   const { data: activeLeagueCapResponse, isLoading: leagueCapLoading } = useActiveLeagueCap();
+  const { data: activeSeasonData } = useActiveSeason();
+  const { data: futurePicksData } = useTeamFuturePicks(numericTeamId);
   const updateTeamMutation = useUpdateTeam();
   const releasePlayerMutation = useReleasePlayer(numericTeamId);
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
   const { toast } = useToast();
+
+  // Calcular período atual para limite de trades (a cada 2 temporadas)
+  const currentSeason = activeSeasonData?.data?.season_number || 1;
+  const seasonStart = Math.floor((currentSeason - 1) / 2) * 2 + 1;
+  const seasonEnd = seasonStart + 1;
+  
+  // Hook para contar trades executadas no período atual
+  const { data: tradeLimitData } = useExecutedTradesCount(
+    numericTeamId, 
+    seasonStart, 
+    seasonEnd
+  );
 
   // Extrair dados da resposta da API
   const teamPlayers: Player[] = teamPlayersResponse?.data || [];
@@ -283,14 +300,66 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
   const handleCopyTeam = () => {
     if (!team?.data) return;
+    
+    // Informações básicas do time
     const startersList = starters.map((p, idx) => `${STARTER_POSITIONS[idx]}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
-    const capLine = `CAP: ${minCap} / *${currentCap}* / ${maxCap}`;
-    const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n\n${capLine}`;
+    
+ // Processar picks futuras
+ let picksText = '';
+ if (futurePicksData) {
+   const allPicks = [
+     ...(futurePicksData.my_own_picks || []),
+     ...(futurePicksData.received_picks || [])
+   ];
+   
+   // Agrupar picks por round
+   const picksByRound = allPicks.reduce((acc, pick) => {
+     const round = pick.round;
+     if (!acc[round]) acc[round] = [];
+     acc[round].push(pick);
+     return acc;
+   }, {} as Record<number, any[]>);
+   
+   // Ordenar rounds (1º antes do 2º)
+   const sortedRounds = Object.keys(picksByRound).sort((a, b) => parseInt(a) - parseInt(b));
+   
+   picksText = sortedRounds.map(round => {
+     const roundPicks = picksByRound[parseInt(round)];
+     // Agrupar picks por ano
+     const picksByYear = roundPicks.reduce((acc, pick) => {
+       const year = pick.season_year;
+       if (!acc[year]) acc[year] = [];
+       acc[year].push(pick);
+       return acc;
+     }, {} as Record<string, any[]>);
+     
+     // Ordenar anos
+     const sortedYears = Object.keys(picksByYear).sort((a, b) => parseInt(a) - parseInt(b));
+     
+     const roundText = sortedYears.map(year => {
+       const yearPicks = picksByYear[year];
+       const teamNames = yearPicks.map(pick => pick.original_team_name).join(', ');
+       return `-${year} (${teamNames})`;
+     }).join('\n');
+     
+     return `\n_Picks ${round}º round_:\n${roundText}`;
+      }).join('\n');
+    }
+    
+    const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n${picksText}\n\n${capLine}\n${tradesLine}`;
     navigator.clipboard.writeText(text);
     toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
-  };
+    };
+
+    const capLine = `_CAP_: ${minCap} / *${currentCap}* / ${maxCap}`;
+    // Informações de trades
+    const tradesUsed = tradeLimitData?.data?.trades_used || 0;
+    const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
+    const tradesLine = `_Trades_: ${tradesUsed} / ${tradesLimit}`;
+    
+   
 
   // Componente PlayerCard simplificado
   const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr, onClick, selected }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number; onClick?: () => void; selected?: boolean }) => {

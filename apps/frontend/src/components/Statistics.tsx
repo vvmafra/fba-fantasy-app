@@ -12,6 +12,7 @@ import ImageFullscreenModal from './ImageFullscreenModal';
 import { playoffImageService } from '@/services/playoffImageService';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 interface TeamStats {
   teamName: string;
@@ -33,6 +34,9 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
   
+  // Hook para navegação
+  const navigate = useNavigate();
+  
   // Buscar dados do time do usuário
   const { data: team } = useTeam(teamId || 1); // TODO: Pegar team_id do usuário logado
   const userTeamName = team?.data?.name || 'Los Angeles Lakers'; // Fallback para dados mock
@@ -46,6 +50,13 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
   // Hooks para funcionalidades admin
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Função para navegar para a página do time
+  const handleTeamClick = (clickedTeamId: number) => {
+    // Usar o teamId do usuário logado como base e o teamId do time clicado como otherTeamId
+    const userTeamId = teamId || 1; // teamId é o time do usuário logado
+    navigate(`/team/${userTeamId}/view/${clickedTeamId}`);
+  };
 
   // Função para limpar imagens inválidas
   const handleCleanupInvalidImages = async () => {
@@ -160,7 +171,11 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
               ) : editionRanking?.data ? (
                 <div className="space-y-2">
                   {editionRanking.data.map((team, index) => (
-                    <Card key={team.team_id} className={`${team.team_name === userTeamName ? 'ring-2 ring-nba-blue bg-blue-50' : ''}`}>
+                    <Card 
+                      key={team.team_id} 
+                      className={`${team.team_name === userTeamName ? 'ring-2 ring-nba-blue bg-blue-50' : ''} cursor-pointer hover:shadow-md transition-shadow`}
+                      onClick={() => handleTeamClick(team.team_id)}
+                    >
                       <CardContent className="p-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-3">

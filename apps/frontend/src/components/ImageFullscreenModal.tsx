@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { X, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -77,6 +77,9 @@ const ImageFullscreenModal = ({
         className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0"
         onKeyDown={handleKeyDown}
       >
+        <DialogTitle className="sr-only">
+          {title || 'Visualização de imagem em tela cheia'}
+        </DialogTitle>
         {/* Header com controles */}
         {/* <div className="absolute top-4 left-4 right-4 z-50 flex items-center justify-between bg-black/50 backdrop-blur-sm rounded-lg p-3">
           <div className="flex items-center space-x-2">
