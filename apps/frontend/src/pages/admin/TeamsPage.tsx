@@ -49,7 +49,7 @@ const TeamsPage = () => {
   const { data: teamsResponse, isLoading, error } = useTeams();
   
   // Buscar usuários para o dropdown de proprietários
-  const { data: usersResponse } = useUsers({ sortBy: 'name', sortOrder: 'asc' });
+  const { data: usersResponse } = useUsers({ sortBy: 'name', sortOrder: 'asc', limit: 1000 });
 
   const deleteTeamMutation = useDeleteTeam();
   const updateTeamMutation = useUpdateTeam();
