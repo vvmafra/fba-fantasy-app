@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +52,10 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   // Estado para edição inline (apenas para admins)
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{ ovr: number; age: number }>({ ovr: 0, age: 0 });
+  const [focusedInput, setFocusedInput] = useState<'ovr' | 'age' | null>(null);
+  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const ovrInputRef = useRef<HTMLInputElement>(null);
+  const ageInputRef = useRef<HTMLInputElement>(null);
 
   // Função para ordenar jogadores baseado na ordem salva
   const orderPlayersBySavedOrder = useCallback((players: Player[], savedOrder: any) => {
@@ -132,6 +136,53 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     return Math.max(...starters.map(p => p.ovr));
   }, [starters]);
 
+  // Handlers otimizados para focus/blur
+  const handleFocus = useCallback((inputType: 'ovr' | 'age') => {
+    // Limpar timeout anterior se existir
+    if (focusTimeoutRef.current) {
+      clearTimeout(focusTimeoutRef.current);
+    }
+    setFocusedInput(inputType);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    // Limpar timeout anterior se existir
+    if (focusTimeoutRef.current) {
+      clearTimeout(focusTimeoutRef.current);
+    }
+    
+    // Pequeno delay para permitir que o usuário clique nos botões de salvar/cancelar
+    focusTimeoutRef.current = setTimeout(() => {
+      setFocusedInput(null);
+    }, 150);
+  }, []);
+
+  // Handlers otimizados para onChange
+  const handleAgeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numValue = value === '' ? 0 : parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      setEditValues(v => ({ ...v, age: numValue }));
+    }
+  }, []);
+
+  const handleOvrChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const numValue = value === '' ? 0 : parseInt(value, 10);
+    if (!isNaN(numValue)) {
+      setEditValues(v => ({ ...v, ovr: numValue }));
+    }
+  }, []);
+
+  // Cleanup do timeout ao desmontar
+  useEffect(() => {
+    return () => {
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleCopyTeam = () => {
     if (!team?.data) return;
     const startersList = starters.map((p, idx) => `${STARTER_POSITIONS[idx]}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
@@ -147,8 +198,30 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number }) => {
     const isEditing = editingPlayerId === player.id;
     
+    // Valores otimizados para os inputs
+    const ageValue = useMemo(() => editValues.age || '', [editValues.age]);
+    const ovrValue = useMemo(() => editValues.ovr || '', [editValues.ovr]);
+    
+    const handleCardClick = () => {
+      // Não executar ações do card se um input estiver em foco
+      if (focusedInput) return;
+    };
+
+    // Restaurar foco quando necessário
+    useEffect(() => {
+      if (focusedInput && isEditing) {
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        if (inputRef) {
+          // Pequeno delay para garantir que o DOM foi atualizado
+          setTimeout(() => {
+            inputRef.focus();
+          }, 0);
+        }
+      }
+    }, [focusedInput, isEditing]);
+
     return (
-      <Card className={`mb-3 transition-all`}>
+      <Card className={`mb-3 transition-all`} onClick={handleCardClick}>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             {/* Coluna do badge */}
@@ -181,12 +254,19 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                 {isEditing ? (
                   <>
                     <input
+                      ref={ageInputRef}
                       type="number"
                       className="border rounded px-1 w-12 text-center"
-                      value={editValues.age}
+                      value={ageValue}
                       min={10}
                       max={50}
-                      onChange={e => setEditValues(v => ({ ...v, age: Number(e.target.value) }))}
+                      onChange={handleAgeChange}
+                      onFocus={() => handleFocus('age')}
+                      onBlur={handleBlur}
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
                     />
                     <span>y</span>
                   </>
@@ -197,12 +277,19 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
             </div>
             {isEditing ? (
               <input
+                ref={ovrInputRef}
                 type="number"
                 className="border rounded px-1 w-14 text-center text-2xl font-bold text-gray-800 mr-5"
-                value={editValues.ovr}
+                value={ovrValue}
                 min={0}
                 max={150}
-                onChange={e => setEditValues(v => ({ ...v, ovr: Number(e.target.value) }))}
+                onChange={handleOvrChange}
+                onFocus={() => handleFocus('ovr')}
+                onBlur={handleBlur}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
               />
             ) : (
               <span className="text-2xl font-bold text-gray-800 mr-5">{player.ovr}</span>

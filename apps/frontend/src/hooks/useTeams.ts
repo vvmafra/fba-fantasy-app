@@ -13,9 +13,11 @@ export const teamKeys = {
 };
 
 // Hook para buscar todos os times
-export const useTeams = (params?: TeamQueryParams) => {
+export const useTeams = (params?: TeamQueryParams) => 
+  
+  {
   return useQuery({
-    queryKey: teamKeys.list(params || {}),
+    queryKey: teamKeys.list(params || {limit: 1000}),
     queryFn: () => teamService.getAllTeams(params),
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
