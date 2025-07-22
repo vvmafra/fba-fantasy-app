@@ -40,7 +40,7 @@ const AwardsPage = () => {
   const { data: activeSeasonResponse } = useActiveSeason();
   const { data: playersResponse } = useAllPlayers();
   const { data: teamsResponse } = useTeams();
-  const { data: usersResponse } = useUsers();
+  const { data: usersResponse } = useUsers({ sortBy: 'name', sortOrder: 'asc', limit: 1000 });
   const { data: awardsResponse, isLoading } = useSeasonAwardsBySeason(selectedSeason || 0);
   const updateAwardsMutation = useUpdateSeasonAwards();
   const { data: allAwardsResponse } = useSeasonAwards();
