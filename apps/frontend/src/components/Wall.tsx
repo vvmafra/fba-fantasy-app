@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube, Check, AlertTriangle } from 'lucide-react';
+import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube, Check, AlertTriangle, Edit } from 'lucide-react';
 import { teamService, Team } from '@/services/teamService';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useDeadlines } from '@/hooks/useDeadlines';
@@ -12,6 +12,7 @@ import { RosterSeasonForm } from './forms/rosterSeason';
 import { RosterPlayoffsForm } from './forms/rosterPlayoffs';
 import { rosterService } from '@/services/rosterService';
 import { rosterPlayoffsService } from '@/services/rosterPlayoffsService';
+import DeadlineEditModal from './DeadlineEditModal';
 
 interface ImportantLink {
   id: string;
@@ -36,6 +37,10 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
   // Estado para controlar os modais de roster
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [isPlayoffsModalOpen, setIsPlayoffsModalOpen] = useState(false);
+  
+  // Estado para controlar o modal de edição de deadline
+  const [isDeadlineEditModalOpen, setIsDeadlineEditModalOpen] = useState(false);
+  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
   
   // Usar dados da temporada ativa ou null se não existir
   const currentSeason = activeSeason?.data?.year;
@@ -252,6 +257,13 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
 
   const nextEvent = getNextEvent();
 
+  // Função para abrir o modal de edição de deadline
+  const handleEditDeadline = (deadline: Deadline, e: React.MouseEvent) => {
+    e.stopPropagation(); // Previne que o clique propague para o card
+    setSelectedDeadline(deadline);
+    setIsDeadlineEditModalOpen(true);
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6 pb-24">
       {/* Header com Temporada e Data */}
@@ -456,17 +468,29 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {deadlineService.utils.formatDeadlineDate({
-                            ...deadline,
-                            deadline_date,
-                            deadline_time
-                          })}
+                      <div className="text-right flex items-center gap-2">
+                        <div>
+                          <div className="font-semibold">
+                            {deadlineService.utils.formatDeadlineDate({
+                              ...deadline,
+                              deadline_date,
+                              deadline_time
+                            })}
+                          </div>
+                          <Badge variant="secondary" className="mt-1">
+                            {deadline.type.replace('_', ' ')}
+                          </Badge>
                         </div>
-                        <Badge variant="secondary" className="mt-1">
-                          {deadline.type.replace('_', ' ')}
-                        </Badge>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-gray-100"
+                            onClick={(e) => handleEditDeadline(deadline, e)}
+                          >
+                            <Edit className="h-4 w-4 text-gray-500" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -512,6 +536,16 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
         onSuccess={async () => {
           await checkRosters();
           setIsPlayoffsModalOpen(false);
+        }}
+      />
+
+      {/* Modal para editar deadline */}
+      <DeadlineEditModal
+        isOpen={isDeadlineEditModalOpen}
+        onClose={() => setIsDeadlineEditModalOpen(false)}
+        deadline={selectedDeadline}
+        onSuccess={() => {
+          refreshDeadlines();
         }}
       />
     </div>
