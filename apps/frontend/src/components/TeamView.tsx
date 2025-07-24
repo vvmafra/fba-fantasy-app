@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -198,9 +198,60 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   const PlayerCard = React.memo(({ player, index, isStarter = false, maxStarterOvr }: { player: Player; index: number; isStarter?: boolean; maxStarterOvr?: number }) => {
     const isEditing = editingPlayerId === player.id;
     
-    // Valores otimizados para os inputs
-    const ageValue = useMemo(() => editValues.age || '', [editValues.age]);
-    const ovrValue = useMemo(() => editValues.ovr || '', [editValues.ovr]);
+    // Estado local para os valores dos inputs (evita re-renderizações do componente pai)
+    const [localAgeValue, setLocalAgeValue] = useState(editValues.age || '');
+    const [localOvrValue, setLocalOvrValue] = useState(editValues.ovr || '');
+    
+    // Refs para os inputs
+    const ageInputRef = useRef<HTMLInputElement>(null);
+    const ovrInputRef = useRef<HTMLInputElement>(null);
+
+    // Sincronizar valores locais quando editValues mudar
+    useEffect(() => {
+      if (isEditing) {
+        setLocalAgeValue(editValues.age || '');
+        setLocalOvrValue(editValues.ovr || '');
+      }
+    }, [editValues.age, editValues.ovr, isEditing]);
+
+    // Handlers locais para onChange
+    const handleLocalAgeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalAgeValue(value);
+      
+      // Atualizar o estado global apenas se o valor for válido
+      const numValue = value === '' ? 0 : parseInt(value, 10);
+      if (!isNaN(numValue)) {
+        setEditValues(v => ({ ...v, age: numValue }));
+      }
+    }, []);
+
+    const handleLocalOvrChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalOvrValue(value);
+      
+      // Atualizar o estado global apenas se o valor for válido
+      const numValue = value === '' ? 0 : parseInt(value, 10);
+      if (!isNaN(numValue)) {
+        setEditValues(v => ({ ...v, ovr: numValue }));
+      }
+    }, []);
+
+    // Handlers para focus/blur
+    const handleAgeFocus = useCallback(() => {
+      setFocusedInput('age');
+    }, []);
+
+    const handleOvrFocus = useCallback(() => {
+      setFocusedInput('ovr');
+    }, []);
+
+    const handleInputBlur = useCallback(() => {
+      // Pequeno delay para permitir cliques nos botões
+      setTimeout(() => {
+        setFocusedInput(null);
+      }, 100);
+    }, []);
     
     const handleCardClick = () => {
       // Não executar ações do card se um input estiver em foco
@@ -208,17 +259,25 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     };
 
     // Restaurar foco quando necessário
-    useEffect(() => {
+    useLayoutEffect(() => {
       if (focusedInput && isEditing) {
         const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
         if (inputRef) {
-          // Pequeno delay para garantir que o DOM foi atualizado
-          setTimeout(() => {
-            inputRef.focus();
-          }, 0);
+          inputRef.focus();
         }
       }
     }, [focusedInput, isEditing]);
+
+    // Manter foco durante re-renderizações
+    useLayoutEffect(() => {
+      if (isEditing && focusedInput) {
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        if (inputRef && document.activeElement !== inputRef) {
+          // Restaurar foco se foi perdido durante re-renderização
+          inputRef.focus();
+        }
+      }
+    });
 
     return (
       <Card className={`mb-3 transition-all`} onClick={handleCardClick}>
@@ -257,12 +316,12 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                       ref={ageInputRef}
                       type="number"
                       className="border rounded px-1 w-12 text-center"
-                      value={ageValue}
+                      value={localAgeValue}
                       min={10}
                       max={50}
-                      onChange={handleAgeChange}
-                      onFocus={() => handleFocus('age')}
-                      onBlur={handleBlur}
+                      onChange={handleLocalAgeChange}
+                      onFocus={handleAgeFocus}
+                      onBlur={handleInputBlur}
                       onClick={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       onTouchStart={(e) => e.stopPropagation()}
@@ -280,12 +339,12 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                 ref={ovrInputRef}
                 type="number"
                 className="border rounded px-1 w-14 text-center text-2xl font-bold text-gray-800 mr-5"
-                value={ovrValue}
+                value={localOvrValue}
                 min={0}
                 max={150}
-                onChange={handleOvrChange}
-                onFocus={() => handleFocus('ovr')}
-                onBlur={handleBlur}
+                onChange={handleLocalOvrChange}
+                onFocus={handleOvrFocus}
+                onBlur={handleInputBlur}
                 onClick={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
