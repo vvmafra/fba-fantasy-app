@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube, Check, AlertTriangle, Edit } from 'lucide-react';
+import { Calendar, ExternalLink, Clock, Trophy, Users, FileText, Target, Users2, Zap, UserPlus, RefreshCw, Award, Medal, Youtube, Check, AlertTriangle, Edit, ChevronUp, ChevronDown } from 'lucide-react';
 import { teamService, Team } from '@/services/teamService';
 import { useActiveSeason } from '@/hooks/useSeasons';
 import { useDeadlines } from '@/hooks/useDeadlines';
@@ -27,6 +27,9 @@ interface WallProps {
   teamId: number;
 }
 
+type SortField = 'name' | 'cap';
+type SortDirection = 'asc' | 'desc';
+
 const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
   // Buscar temporada ativa
   const { data: activeSeason, isLoading: seasonLoading } = useActiveSeason();
@@ -41,6 +44,10 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
   // Estado para controlar o modal de edição de deadline
   const [isDeadlineEditModalOpen, setIsDeadlineEditModalOpen] = useState(false);
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
+  
+  // Estado para ordenação do Power Ranking
+  const [sortField, setSortField] = useState<SortField>('cap');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
   // Usar dados da temporada ativa ou null se não existir
   const currentSeason = activeSeason?.data?.year;
@@ -118,8 +125,60 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
     }
   }, [teamId, activeSeason?.data?.id]);
 
-  // Ordena os times pelo CAP
-  const sortedTeams = teams.sort((a, b) => (b.cap || 0) - (a.cap || 0));
+  // Função para ordenar os times do Power Ranking
+  const sortedTeams = useMemo(() => {
+    return [...teams].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'name') {
+        comparison = a.name.localeCompare(b.name, 'pt-BR');
+      } else if (sortField === 'cap') {
+        comparison = (a.cap || 0) - (b.cap || 0);
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [teams, sortField, sortDirection]);
+
+  // Função para calcular a posição real baseada no CAP
+  const getTeamRank = (teamCap: number) => {
+    const teamsByCap = [...teams].sort((a, b) => (b.cap || 0) - (a.cap || 0));
+    return teamsByCap.findIndex(team => (team.cap || 0) === teamCap) + 1;
+  };
+
+  // Função para obter a cor da posição baseada no ranking real
+  const getRankColor = (rank: number) => {
+    if (rank === 1) return 'text-yellow-500';
+    if (rank === 2) return 'text-gray-500';
+    if (rank === 3) return 'text-orange-700';
+    return 'text-muted-foreground';
+  };
+
+  // Função para obter o estilo do card baseado no ranking real
+  const getCardStyle = (rank: number) => {
+    if (rank <= 3) return 'font-bold border-2 border-yellow-400';
+    return 'hover:bg-muted/50';
+  };
+
+  // Função para alternar ordenação
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Função para renderizar ícone de ordenação
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ChevronUp size={14} className="text-gray-400" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ChevronUp size={14} className="text-nba-blue" /> : 
+      <ChevronDown size={14} className="text-nba-blue" />;
+  };
 
   const getEventIcon = (type: string) => {
     switch (type) {
@@ -340,23 +399,48 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Cabeçalho da tabela com ordenação */}
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg mb-3">
+              <button
+                onClick={() => handleSort('name')}
+                className="flex items-center space-x-1 hover:text-nba-blue transition-colors cursor-pointer text-sm font-semibold"
+              >
+                <span>Time</span>
+                {renderSortIcon('name')}
+              </button>
+              
+              <button
+                onClick={() => handleSort('cap')}
+                className="flex items-center space-x-1 hover:text-nba-blue transition-colors cursor-pointer text-sm font-semibold"
+              >
+                <span>CAP</span>
+                {renderSortIcon('cap')}
+              </button>
+            </div>
+
             <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
-              {sortedTeams.map((team, idx) => (
-                <Link
-                  to={`/team/${teamId}/view/${team.id}`}
-                  key={team.id}
-                  className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${idx < 3 ? 'font-bold border-2 border-yellow-400' : 'hover:bg-muted/50'} transition`}
-                >
-                  <span className={`text-lg w-6 text-center ${idx === 0 ? 'text-yellow-500' : idx === 1 ? 'text-gray-500' : idx === 2 ? 'text-orange-700' : 'text-muted-foreground'}`}>{idx + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <span className="block truncate">{team.name}</span>
-                    <span className="block text-xs text-muted-foreground truncate">
-                      Dono: {team.owner_name || 'Sem dono'}
-                    </span>
-                  </div>
-                  <span className="text-sm font-mono">CAP: {team.cap || 0}</span>
-                </Link>
-              ))}
+              {sortedTeams.map((team) => {
+                const realRank = getTeamRank(team.cap || 0);
+                const rankColor = getRankColor(realRank);
+                const cardStyle = getCardStyle(realRank);
+                
+                return (
+                  <Link
+                    to={`/team/${teamId}/view/${team.id}`}
+                    key={team.id}
+                    className={`flex items-center gap-3 p-2 rounded-md cursor-pointer ${cardStyle} transition`}
+                  >
+                    <span className={`text-lg w-6 text-center ${rankColor}`}>{realRank}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate">{team.name}</span>
+                      <span className="block text-xs text-muted-foreground truncate">
+                        Dono: {team.owner_name || 'Sem dono'}
+                      </span>
+                    </div>
+                    <span className="text-sm font-mono">CAP: {team.cap || 0}</span>
+                  </Link>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

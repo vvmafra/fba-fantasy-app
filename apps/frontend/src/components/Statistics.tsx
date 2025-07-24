@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, Trophy, Calendar, Upload, TrendingUp, Target, Image as ImageIcon } from 'lucide-react';
+import { BarChart3, Trophy, Calendar, Upload, TrendingUp, Target, Image as ImageIcon, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTeam } from '@/hooks/useTeams';
 import { useEditionRanking } from '@/hooks/useEditionRanking';
 import { usePlayoffImageBySeason } from '@/hooks/usePlayoffImages';
@@ -29,10 +29,15 @@ interface StatisticsProps {
   teamId?: number;
 }
 
+type SortField = 'name' | 'points';
+type SortDirection = 'asc' | 'desc';
+
 const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
   const [selectedSeason, setSelectedSeason] = useState<'edition' | 'playoffs'>('edition');
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [isFullscreenModalOpen, setIsFullscreenModalOpen] = useState(false);
+  const [sortField, setSortField] = useState<SortField>('points');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
   // Hook para navegação
   const navigate = useNavigate();
@@ -80,6 +85,43 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
         variant: 'destructive',
       });
     }
+  };
+
+  // Função para ordenar os dados do ranking
+  const sortedRankingData = useMemo(() => {
+    if (!editionRanking?.data) return [];
+    
+    return [...editionRanking.data].sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortField === 'name') {
+        comparison = a.team_name.localeCompare(b.team_name, 'pt-BR');
+      } else if (sortField === 'points') {
+        comparison = a.total_points - b.total_points;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [editionRanking?.data, sortField, sortDirection]);
+
+  // Função para alternar ordenação
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // Função para renderizar ícone de ordenação
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ChevronUp size={16} className="text-gray-400" />;
+    }
+    return sortDirection === 'asc' ? 
+      <ChevronUp size={16} className="text-nba-blue" /> : 
+      <ChevronDown size={16} className="text-nba-blue" />;
   };
 
   // Mock data - será substituído por dados reais do Supabase
@@ -168,9 +210,34 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-nba-blue mx-auto"></div>
                   <p className="mt-2 text-gray-600">Carregando ranking...</p>
                 </div>
-              ) : editionRanking?.data ? (
+              ) : sortedRankingData.length > 0 ? (
                 <div className="space-y-2">
-                  {editionRanking.data.map((team, index) => (
+                  {/* Cabeçalho da tabela com ordenação */}
+                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold">
+                        #
+                      </div>
+                      <button
+                        onClick={() => handleSort('name')}
+                        className="flex items-center space-x-1 hover:text-nba-blue transition-colors cursor-pointer"
+                      >
+                        <span className="font-semibold">Nome do Time</span>
+                        {renderSortIcon('name')}
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleSort('points')}
+                      className="flex items-center space-x-1 hover:text-nba-blue transition-colors cursor-pointer"
+                    >
+                      <span className="font-semibold">Pontuação</span>
+                      {renderSortIcon('points')}
+                    </button>
+                  </div>
+
+                  {/* Lista dos times ordenados */}
+                  {sortedRankingData.map((team, index) => (
                     <Card 
                       key={team.team_id} 
                       className={`${team.team_name === userTeamName ? 'ring-2 ring-nba-blue bg-blue-50' : ''} cursor-pointer hover:shadow-md transition-shadow`}
