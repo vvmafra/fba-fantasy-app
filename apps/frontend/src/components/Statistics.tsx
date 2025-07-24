@@ -252,7 +252,7 @@ const Statistics = ({ isAdmin, teamId }: StatisticsProps) => {
                             <div>
                               <h3 className="font-semibold">{team.team_name}</h3>
                               <p className="text-sm text-gray-600">
-                                {team.championships} títulos • {team.finals_appearances} finais • {team.conference_finals} finais de conf.
+                                {team.championships} títulos • GM: {team.owner_name || 'Sem GM'}
                               </p>
                             </div>
                           </div>

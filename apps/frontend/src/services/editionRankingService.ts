@@ -4,6 +4,7 @@ export interface EditionRankingTeam {
   team_id: number;
   team_name: string;
   team_abbreviation: string;
+  owner_name?: string | null;
   total_points: number;
   standings_points: number;
   awards_points: number;

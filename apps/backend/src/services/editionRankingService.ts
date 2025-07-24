@@ -4,6 +4,7 @@ export interface EditionRankingTeam {
   team_id: number;
   team_name: string;
   team_abbreviation: string;
+  owner_name?: string | null;
   total_points: number;
   standings_points: number;
   awards_points: number;
@@ -23,6 +24,7 @@ export class EditionRankingService {
           t.id as team_id,
           t.name as team_name,
           t.abbreviation as team_abbreviation,
+          u.name as owner_name,
           -- Pontos dos standings
           COALESCE(SUM(
             CASE 
@@ -56,6 +58,7 @@ export class EditionRankingService {
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
         FROM teams t
+        LEFT JOIN users u ON t.owner_id = u.id
         LEFT JOIN team_standings ts ON t.id = ts.team_id
         LEFT JOIN season_awards sa ON t.id IN (
           sa.mvp_team_id, 
@@ -65,12 +68,13 @@ export class EditionRankingService {
           sa.mip_team_id, 
           sa.coy_team_id
         )
-        GROUP BY t.id, t.name, t.abbreviation
+        GROUP BY t.id, t.name, t.abbreviation, u.name
       )
       SELECT 
         team_id,
         team_name,
         team_abbreviation,
+        owner_name,
         standings_points + awards_points as total_points,
         standings_points,
         awards_points,
@@ -87,6 +91,7 @@ export class EditionRankingService {
       team_id: row.team_id,
       team_name: row.team_name,
       team_abbreviation: row.team_abbreviation,
+      owner_name: row.owner_name,
       total_points: parseInt(row.total_points),
       standings_points: parseInt(row.standings_points),
       awards_points: parseInt(row.awards_points),
@@ -106,6 +111,7 @@ export class EditionRankingService {
           t.id as team_id,
           t.name as team_name,
           t.abbreviation as team_abbreviation,
+          u.name as owner_name,
           -- Pontos dos standings para a temporada específica
           COALESCE(SUM(
             CASE 
@@ -139,6 +145,7 @@ export class EditionRankingService {
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
         FROM teams t
+        LEFT JOIN users u ON t.owner_id = u.id
         LEFT JOIN team_standings ts ON t.id = ts.team_id AND ts.season_id = $1
         LEFT JOIN season_awards sa ON t.id IN (
           sa.mvp_team_id, 
@@ -148,12 +155,13 @@ export class EditionRankingService {
           sa.mip_team_id, 
           sa.coy_team_id
         ) AND sa.season_id = $1
-        GROUP BY t.id, t.name, t.abbreviation
+        GROUP BY t.id, t.name, t.abbreviation, u.name
       )
       SELECT 
         team_id,
         team_name,
         team_abbreviation,
+        owner_name,
         standings_points + awards_points as total_points,
         standings_points,
         awards_points,
@@ -171,6 +179,7 @@ export class EditionRankingService {
       team_id: row.team_id,
       team_name: row.team_name,
       team_abbreviation: row.team_abbreviation,
+      owner_name: row.owner_name,
       total_points: parseInt(row.total_points),
       standings_points: parseInt(row.standings_points),
       awards_points: parseInt(row.awards_points),
@@ -190,6 +199,7 @@ export class EditionRankingService {
           t.id as team_id,
           t.name as team_name,
           t.abbreviation as team_abbreviation,
+          u.name as owner_name,
           -- Pontos dos standings
           COALESCE(SUM(
             CASE 
@@ -223,6 +233,7 @@ export class EditionRankingService {
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
         FROM teams t
+        LEFT JOIN users u ON t.owner_id = u.id
         LEFT JOIN team_standings ts ON t.id = ts.team_id
         LEFT JOIN season_awards sa ON t.id IN (
           sa.mvp_team_id, 
@@ -233,12 +244,13 @@ export class EditionRankingService {
           sa.coy_team_id
         )
         WHERE t.id = $1
-        GROUP BY t.id, t.name, t.abbreviation
+        GROUP BY t.id, t.name, t.abbreviation, u.name
       )
       SELECT 
         team_id,
         team_name,
         team_abbreviation,
+        owner_name,
         standings_points + awards_points as total_points,
         standings_points,
         awards_points,
@@ -257,6 +269,7 @@ export class EditionRankingService {
       team_id: row.team_id,
       team_name: row.team_name,
       team_abbreviation: row.team_abbreviation,
+      owner_name: row.owner_name,
       total_points: parseInt(row.total_points),
       standings_points: parseInt(row.standings_points),
       awards_points: parseInt(row.awards_points),
