@@ -44,8 +44,8 @@ export function useRosterPlayoffsValidation(
 
       // Validar minutos por jogador
       activePlayers.forEach(player => {
-        if (player.minutes > 40) {
-          errors.maxMinutes = `Jogador ${player.name} não pode ter mais de 40 minutos`;
+        if (player.minutes > 45) {
+          errors.maxMinutes = `Jogador ${player.name} não pode ter mais de 45 minutos`;
         }
         if (player.minutes > 0 && player.minutes < 5) {
           errors.benchMinutes = `Jogador ${player.name} deve ter pelo menos 5 minutos ou 0`;
