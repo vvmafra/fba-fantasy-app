@@ -64,7 +64,7 @@ export function PlayerCard({
           id={`minutes-${player.id}`}
           type="number"
           min="0"
-          max="40"
+          max="45"
           value={player.isGLeague ? '0' : inputValue}
           onChange={(e) => {
             const value = e.target.value;
