@@ -525,6 +525,8 @@ const WallUpdated: React.FC<WallProps> = ({ isAdmin, teamId }) => {
                           setIsRosterModalOpen(true);
                         } else if (deadline.type === 'playoffs_roster') {
                           setIsPlayoffsModalOpen(true);
+                        } else if (deadline.type === 'fa_deadline') {
+                          window.open('https://forms.gle/QzrC9pJkd5xp1sdr6', '_blank');
                         }
                       }}
                     >
