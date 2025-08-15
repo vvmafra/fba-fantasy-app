@@ -8,12 +8,27 @@ export const createTradeSchema = z.object({
     team_id: z.number().int('Team ID deve ser um número inteiro'),
     is_initiator: z.boolean(),
     assets: z.array(z.object({
-      asset_type: z.enum(['player', 'pick'], {
-        errorMap: () => ({ message: 'Asset type deve ser player ou pick' })
+      asset_type: z.enum(['player', 'pick', 'swap'], {
+        errorMap: () => ({ message: 'Asset type deve ser player, pick ou swap' })
       }),
       player_id: z.number().int().optional(),
       pick_id: z.number().int().optional(),
+      swap_id: z.number().int().optional(),
       to_participant_id: z.number().int().optional(),
+    }).refine((data) => {
+      // Validar que os campos corretos estão presentes baseado no asset_type
+      if (data.asset_type === 'player' && !data.player_id) {
+        return false;
+      }
+      if (data.asset_type === 'pick' && !data.pick_id) {
+        return false;
+      }
+      if (data.asset_type === 'swap' && !data.swap_id) {
+        return false;
+      }
+      return true;
+    }, {
+      message: 'ID do asset deve ser fornecido baseado no tipo'
     })).min(1, 'Pelo menos um asset deve ser fornecido'),
   })).min(2, 'Pelo menos dois times devem participar da trade'),
 });

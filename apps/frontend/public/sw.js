@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fba-cache-v2';
+const CACHE_NAME = 'fba-cache-v3';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -19,6 +19,12 @@ self.addEventListener('install', (event) => {
 
 // Interceptação de requisições
 self.addEventListener('fetch', (event) => {
+  // Não fazer cache de requisições de API
+  if (event.request.url.includes('/api/') || event.request.url.includes('/deadlines') || event.request.url.includes('/trades')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

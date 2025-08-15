@@ -25,16 +25,17 @@ export interface TradeParticipant {
 export interface TradeAsset {
   id: number;
   participant_id: number;
-  asset_type: 'player' | 'pick';
+  asset_type: 'player' | 'pick' | 'swap';
   player_id?: number | null;
   pick_id?: number | null;
+  swap_id?: number | null;
   to_team_id?: number | null;
 }
 
 export interface TradeAssetMovement {
   id: number;
   trade_id: number;
-  asset_type: 'player' | 'pick';
+  asset_type: 'player' | 'pick' | 'swap';
   asset_id: number;
   from_team_id: number;
   to_team_id: number;
@@ -61,6 +62,36 @@ export interface TradeWithDetails extends Trade {
         year: number;
         original_team_id: number;
       } | null;
+      swap?: {
+        id: number;
+        season_id: number;
+        swap_type: 'best' | 'worst';
+        pick_a_id: number;
+        pick_b_id: number;
+        owned_by_team_id: number;
+        created_at: string;
+        pick_a: {
+          id: number;
+          round: number;
+          year: number;
+          original_team_id: number;
+          original_team_name: string;
+          original_team_abbreviation: string;
+        };
+        pick_b: {
+          id: number;
+          round: number;
+          year: number;
+          original_team_id: number;
+          original_team_name: string;
+          original_team_abbreviation: string;
+        };
+        owned_by_team: {
+          id: number;
+          name: string;
+          abbreviation: string;
+        };
+      } | null;
     }>;
   }>;
   movements?: TradeAssetMovement[];
@@ -74,9 +105,10 @@ export interface CreateTradeRequest {
     team_id: number;
     is_initiator: boolean;
     assets: Array<{
-      asset_type: 'player' | 'pick';
+      asset_type: 'player' | 'pick' | 'swap';
       player_id?: number;
       pick_id?: number;
+      swap_id?: number;
       to_team_id?: number;
     }>;
   }>;

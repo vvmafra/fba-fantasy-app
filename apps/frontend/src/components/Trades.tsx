@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { ArrowRight, MessageSquare, Clock, CheckCircle, XCircle, Plus, Calendar, User, PartyPopperIcon, ChevronDown, ChevronUp, AlertCircle, Shuffle } from 'lucide-react';
 import { useTrades, useTradesByTeam, useTradeCounts, useUpdateTradeResponse, useExecuteTrade, useRevertTrade, useExecutedTradesCount, useTradeLimits } from '@/hooks/useTrades';
 import { useTeams } from '@/hooks/useTeams';
 import { useSeasonsFromActive, useActiveSeason } from '@/hooks/useSeasons';
@@ -42,7 +42,7 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   const { data: countsData } = useTradeCounts(activeSeasonData?.data?.id || 1);
   const { data: teamsData } = useTeams();
   const { data: seasonsData } = useSeasonsFromActive();
-  const { deadline: tradeDeadline, loading: deadlineLoading } = useTradeDeadline();
+  const { data: tradeDeadline, isLoading: deadlineLoading, error: deadlineError, refetch: refetchDeadline } = useTradeDeadline();
   
   // Calcular período atual para limite de trades (a cada 2 temporadas)
   const currentSeason = activeSeasonData?.data?.season_number || 1;
@@ -241,12 +241,16 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
                     <div key={`${participant.id}-${asset.id}`} className="flex items-center ml-2 mb-1">
                       {asset.asset_type === 'player' ? (
                         <User size={10} className="mr-1 text-gray-500" />
+                      ) : asset.asset_type === 'swap' ? (
+                        <Shuffle size={10} className="mr-1 text-purple-500" />
                       ) : (
                         <Calendar size={10} className="mr-1 text-gray-500" />
                       )}
                       <span className="text-xs">
                         {asset.asset_type === 'player'
                           ? `${asset.player?.name || 'Jogador'} → para ${destinoAbbreviation}`
+                          : asset.asset_type === 'swap'
+                          ? `Pick Swap (${asset.swap?.swap_type === 'best' ? 'Melhor' : 'Pior'}) - ${asset.swap?.pick_a?.round}ª rodada ${asset.swap?.pick_a?.year?.toString().slice(0, 4)} vs ${asset.swap?.pick_b?.round}ª rodada ${asset.swap?.pick_b?.year?.toString().slice(0, 4)} → para ${destinoAbbreviation}`
                           : `pick ${asset.pick?.round}ª rodada - ${asset.pick?.year?.toString().slice(0, 4)} (via ${asset.pick?.original_team_name || asset.pick?.original_team_abbreviation || '?'}) → para ${destinoAbbreviation}`
                         }
                       </span>
@@ -410,25 +414,78 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
         </Card>
       </div>
 
-       {/* Aviso sobre deadline de trade */}
-       {tradeDeadline && (
-        <Card className={`border-2 ${isTradeDeadlineExpired ? 'border-red-200 bg-red-50' : isTradeDeadlineNear ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
+       {/* Aviso sobre deadline de trade - com cache controlado e refresh automático */}
+       {deadlineLoading && (
+        <Card className="border-gray-200 bg-gray-50">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <Clock className={`h-5 w-5 ${isTradeDeadlineExpired ? 'text-red-600' : isTradeDeadlineNear ? 'text-orange-600' : 'text-blue-600'}`} />
-              <div>
-                <p className="text-sm font-medium">
-                  {isTradeDeadlineExpired ? 'Deadline de Trade Expirado' : isTradeDeadlineNear ? 'Deadline de Trade Próximo' : 'Deadline de Trade'}
-                </p>
-                <p className="text-xs">
-                  {isTradeDeadlineExpired 
-                    ? `O deadline de trade expirou em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Não é mais possível fazer trades.`
-                    : isTradeDeadlineNear 
-                    ? `Deadline de trade em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Apresse-se!`
-                    : `Deadline de trade: ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}`
-                  }
-                </p>
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-gray-600">Carregando deadline...</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {deadlineError && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">
+                    Erro ao carregar deadline
+                  </p>
+                  <p className="text-xs text-red-600">
+                    {deadlineError?.message || 'Erro desconhecido'}
+                  </p>
+                </div>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => refetchDeadline()}
+                disabled={deadlineLoading}
+                className="ml-2"
+                title="Tentar novamente"
+              >
+                {deadlineLoading ? 'Carregando...' : '🔄'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {tradeDeadline && (
+        <Card className={`border-2 ${isTradeDeadlineExpired ? 'border-red-200 bg-red-200' : isTradeDeadlineNear ? 'border-orange-200 bg-orange-50' : 'border-blue-200 bg-blue-50'}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className={`h-5 w-5 ${isTradeDeadlineExpired ? 'text-red-600' : isTradeDeadlineNear ? 'text-orange-600' : 'text-blue-600'}`} />
+                <div>
+                  <p className="text-sm font-medium">
+                    {isTradeDeadlineExpired ? 'Deadline de Trade Expirado' : isTradeDeadlineNear ? 'Deadline de Trade Próximo' : 'Deadline de Trade'}
+                  </p>
+                  <p className="text-xs">
+                    {isTradeDeadlineExpired 
+                      ? `O deadline de trade expirou em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Não é mais possível fazer trades.`
+                      : isTradeDeadlineNear 
+                      ? `Deadline de trade em ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}. Apresse-se!`
+                      : `Deadline de trade: ${deadlineService.utils.formatDeadlineDate(tradeDeadline)}`
+                    }
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => refetchDeadline()}
+                disabled={deadlineLoading}
+                className="ml-2"
+                title="Atualizar deadline"
+              >
+                {deadlineLoading ? 'Atualizando...' : '🔄'}
+              </Button>
             </div>
           </CardContent>
         </Card>

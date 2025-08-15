@@ -40,6 +40,7 @@ export class TradeService {
         ta.asset_type,
         ta.player_id,
         ta.pick_id,
+        ta.swap_id,
         p.name as player_name,
         p.position as player_position,
         p.ovr as player_ovr,
@@ -47,12 +48,36 @@ export class TradeService {
         s.year as pick_year,
         pk.original_team_id as pick_original_team_id,
         tm_original.name as pick_original_team_name,
-        tm_original.abbreviation as pick_original_team_abbreviation
+        tm_original.abbreviation as pick_original_team_abbreviation,
+        ps.swap_type as swap_type,
+        ps.pick_a_id as swap_pick_a_id,
+        ps.pick_b_id as swap_pick_b_id,
+        ps.owned_by_team_id as swap_owned_by_team_id,
+        pa.round as swap_pick_a_round,
+        sa.year as swap_pick_a_year,
+        pa.original_team_id as swap_pick_a_original_team_id,
+        ta_original.name as swap_pick_a_original_team_name,
+        ta_original.abbreviation as swap_pick_a_original_team_abbreviation,
+        pb.round as swap_pick_b_round,
+        sb.year as swap_pick_b_year,
+        pb.original_team_id as swap_pick_b_original_team_id,
+        tb_original.name as swap_pick_b_original_team_name,
+        tb_original.abbreviation as swap_pick_b_original_team_abbreviation,
+        t_owner.name as swap_owned_by_team_name,
+        t_owner.abbreviation as swap_owned_by_team_abbreviation
       FROM trade_assets ta
       LEFT JOIN players p ON p.id = ta.player_id
       LEFT JOIN picks pk ON pk.id = ta.pick_id
       LEFT JOIN seasons s ON pk.season_id = s.id
       LEFT JOIN teams tm_original ON tm_original.id = pk.original_team_id
+      LEFT JOIN pick_swaps ps ON ps.id = ta.swap_id
+      LEFT JOIN picks pa ON ps.pick_a_id = pa.id
+      LEFT JOIN picks pb ON ps.pick_b_id = pb.id
+      LEFT JOIN seasons sa ON pa.season_id = sa.id
+      LEFT JOIN seasons sb ON pb.season_id = sb.id
+      LEFT JOIN teams ta_original ON pa.original_team_id = ta_original.id
+      LEFT JOIN teams tb_original ON pb.original_team_id = tb_original.id
+      LEFT JOIN teams t_owner ON ps.owned_by_team_id = t_owner.id
       WHERE ta.participant_id = $1
       ORDER BY ta.id
     `, [participantId]);
@@ -100,6 +125,7 @@ export class TradeService {
           asset_type: 'player' as const,
           player_id: asset.player_id,
           pick_id: null,
+          swap_id: null,
           player: {
             id: asset.player_id,
             name: asset.player_name,
@@ -107,13 +133,14 @@ export class TradeService {
             ovr: asset.player_ovr
           },
           pick: null,
+          swap: null,
           to_team: toTeamId ? {
             id: toTeamId,
             name: toTeamName,
             abbreviation: toTeamAbbreviation
           } : null
         };
-      } else {
+      } else if (asset.asset_type === 'pick') {
         return {
           id: asset.asset_id,
           participant_id: asset.participant_id,
@@ -121,6 +148,7 @@ export class TradeService {
           asset_type: 'pick' as const,
           player_id: null,
           pick_id: asset.pick_id,
+          swap_id: null,
           player: null,
           pick: {
             id: asset.pick_id,
@@ -129,6 +157,55 @@ export class TradeService {
             original_team_id: asset.pick_original_team_id,
             original_team_name: asset.pick_original_team_name,
             original_team_abbreviation: asset.pick_original_team_abbreviation
+          },
+          swap: null,
+          to_team: toTeamId ? {
+            id: toTeamId,
+            name: toTeamName,
+            abbreviation: toTeamAbbreviation
+          } : null
+        };
+      } else {
+        // asset_type === 'swap'
+        return {
+          id: asset.asset_id,
+          participant_id: asset.participant_id,
+          to_participant_id: toParticipantId,
+          asset_type: 'swap' as const,
+          player_id: null,
+          pick_id: null,
+          swap_id: asset.swap_id,
+          player: null,
+          pick: null,
+          swap: {
+            id: asset.swap_id,
+            season_id: asset.season_id,
+            swap_type: asset.swap_type,
+            pick_a_id: asset.swap_pick_a_id,
+            pick_b_id: asset.swap_pick_b_id,
+            owned_by_team_id: asset.swap_owned_by_team_id,
+            created_at: asset.created_at,
+            pick_a: {
+              id: asset.swap_pick_a_id,
+              round: asset.swap_pick_a_round,
+              year: parseInt(asset.swap_pick_a_year.split('/')[0]),
+              original_team_id: asset.swap_pick_a_original_team_id,
+              original_team_name: asset.swap_pick_a_original_team_name,
+              original_team_abbreviation: asset.swap_pick_a_original_team_abbreviation
+            },
+            pick_b: {
+              id: asset.swap_pick_b_id,
+              round: asset.swap_pick_b_round,
+              year: parseInt(asset.swap_pick_b_year.split('/')[0]),
+              original_team_id: asset.swap_pick_b_original_team_id,
+              original_team_name: asset.swap_pick_b_original_team_name,
+              original_team_abbreviation: asset.swap_pick_b_original_team_abbreviation
+            },
+            owned_by_team: {
+              id: asset.swap_owned_by_team_id,
+              name: asset.swap_owned_by_team_name,
+              abbreviation: asset.swap_owned_by_team_abbreviation
+            }
           },
           to_team: toTeamId ? {
             id: toTeamId,
@@ -362,14 +439,15 @@ export class TradeService {
             ? participantIdMap.get(asset.to_participant_id) 
             : null;
           await client.query(`
-            INSERT INTO trade_assets (participant_id, to_participant_id, asset_type, player_id, pick_id)
-            VALUES ($1, $2, $3, $4, $5)
+            INSERT INTO trade_assets (participant_id, to_participant_id, asset_type, player_id, pick_id, swap_id)
+            VALUES ($1, $2, $3, $4, $5, $6)
           `, [
             participantDbId,
             realToParticipantId,
             asset.asset_type,
             asset.player_id || null,
-            asset.pick_id || null
+            asset.pick_id || null,
+            asset.swap_id || null
           ]);
         }
       }
@@ -627,7 +705,7 @@ export class TradeService {
       `, [
         tradeId,
         asset.asset_type,
-        asset.player_id || asset.pick_id,
+        asset.player_id || asset.pick_id || asset.swap_id,
         asset.participant_team_id,
         toTeamId
       ]);
@@ -639,12 +717,31 @@ export class TradeService {
           SET team_id = $1 
           WHERE id = $2
         `, [toTeamId, asset.player_id]);
-      } else {
+      } else if (asset.asset_type === 'pick') {
         await client.query(`
           UPDATE picks 
           SET current_team_id = $1 
           WHERE id = $2
         `, [toTeamId, asset.pick_id]);
+      } else {
+        // asset_type === 'swap'
+        // Atualizar ownership do swap
+        await client.query(`
+          UPDATE pick_swaps 
+          SET owned_by_team_id = $1 
+          WHERE id = $2
+        `, [toTeamId, asset.swap_id]);
+        
+        // Atualizar is_in_swap = true nas picks envolvidas no swap
+        await client.query(`
+          UPDATE picks 
+          SET is_in_swap = true 
+          WHERE id IN (
+            SELECT pick_a_id FROM pick_swaps WHERE id = $1
+            UNION
+            SELECT pick_b_id FROM pick_swaps WHERE id = $1
+          )
+        `, [asset.swap_id]);
       }
     }
     
@@ -693,12 +790,37 @@ export class TradeService {
             SET team_id = $1 
             WHERE id = $2
           `, [movement.from_team_id, movement.asset_id]);
-        } else {
+        } else if (movement.asset_type === 'pick') {
           await client.query(`
             UPDATE picks 
             SET current_team_id = $1 
             WHERE id = $2
           `, [movement.from_team_id, movement.asset_id]);
+        } else {
+          // movement.asset_type === 'swap'
+          // Reverter ownership do swap
+          await client.query(`
+            UPDATE pick_swaps 
+            SET owned_by_team_id = $1 
+            WHERE id = $2
+          `, [movement.from_team_id, movement.asset_id]);
+          
+          // Após reverter o ownership do swap, verificar se as picks ainda estão em algum swap ativo
+          // Se não estiverem, definir is_in_swap = false
+          await client.query(`
+            UPDATE picks 
+            SET is_in_swap = false 
+            WHERE id IN (
+              SELECT pick_a_id FROM pick_swaps WHERE id = $1
+              UNION
+              SELECT pick_b_id FROM pick_swaps WHERE id = $1
+            )
+            AND id NOT IN (
+              SELECT pick_a_id FROM pick_swaps WHERE id != $1
+              UNION
+              SELECT pick_b_id FROM pick_swaps WHERE id != $1
+            )
+          `, [movement.asset_id]);
         }
       }
       

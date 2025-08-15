@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { deadlineService, Deadline } from '@/services/deadlineService';
 import { seasonService } from '@/services/seasonService';
 
@@ -91,21 +92,14 @@ export const useAllDeadlines = () => {
 
 // Hook para buscar deadline de trade da temporada ativa
 export const useTradeDeadline = () => {
-  const [deadline, setDeadline] = useState<Deadline | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTradeDeadline = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
+  return useQuery({
+    queryKey: ['trade-deadline'],
+    queryFn: async () => {
       // Primeiro buscar a temporada ativa usando o seasonService
       const seasonsResponse = await seasonService.getActiveSeason();
       
       if (!seasonsResponse.success || !seasonsResponse.data) {
-        setError('Temporada ativa não encontrada');
-        return;
+        throw new Error('Temporada ativa não encontrada');
       }
       
       const activeSeasonId = seasonsResponse.data.id;
@@ -113,31 +107,27 @@ export const useTradeDeadline = () => {
       // Buscar o deadline de trade da temporada ativa
       const response = await deadlineService.getDeadlineByTypeAndSeason('trade_deadline', activeSeasonId);
       
-      if (response.success) {
-        setDeadline(response.data);
-      } else {
-        setError('Deadline de trade não encontrado');
+      if (!response.success) {
+        throw new Error('Deadline de trade não encontrado');
       }
-    } catch (err) {
-      setError('Erro ao carregar deadline de trade');
-      console.error('Erro ao carregar deadline de trade:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      
+      return response.data;
+    },
+    staleTime: 1 * 60 * 1000, // 1 minuto - dados ficam "frescos" por 1 min
+    gcTime: 5 * 60 * 1000, // 5 minutos - dados ficam em cache por 5 min
+    refetchInterval: 2 * 60 * 1000, // Refetch a cada 2 minutos
+    refetchOnWindowFocus: true, // Refetch quando a janela ganha foco
+    refetchOnMount: true, // Sempre refetch ao montar o componente
+  });
+}; 
 
-  useEffect(() => {
-    fetchTradeDeadline();
-  }, []);
-
-  const refreshDeadline = () => {
-    fetchTradeDeadline();
+// Hook para invalidar cache do deadline (útil para admin)
+export const useInvalidateDeadlineCache = () => {
+  const queryClient = useQueryClient();
+  
+  const invalidateCache = () => {
+    queryClient.invalidateQueries({ queryKey: ['trade-deadline'] });
   };
-
-  return {
-    deadline,
-    loading,
-    error,
-    refreshDeadline
-  };
+  
+  return { invalidateCache };
 }; 

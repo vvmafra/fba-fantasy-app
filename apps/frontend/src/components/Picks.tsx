@@ -2,7 +2,10 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, Calendar, Trophy } from 'lucide-react';
+import { ArrowUp, ArrowDown, Calendar, Trophy, RefreshCw } from 'lucide-react';
+import { usePicks } from '@/hooks/usePicks';
+import { useTeamPickSwaps } from '@/hooks/usePickSwaps';
+import { PickSwapCard } from '@/components/PickSwapCard';
 
 interface Pick {
   id: string;
@@ -22,6 +25,18 @@ interface PicksProps {
 }
 
 const Picks = ({ isAdmin, teamId }: PicksProps) => {
+  // Buscar picks do time
+  const { data: picksData, isLoading: picksLoading } = usePicks();
+  const { data: swapsData, isLoading: swapsLoading } = useTeamPickSwaps(teamId || 0);
+
+  if (picksLoading || swapsLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
   // Mock data - será substituído por dados reais do Supabase
   const mockPicks: Pick[] = [
     { 
@@ -125,7 +140,7 @@ const Picks = ({ isAdmin, teamId }: PicksProps) => {
   return (
     <div className="p-4 pb-20 space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardContent className="p-4 text-center">
             <Trophy size={24} className="mx-auto mb-2" />
@@ -139,6 +154,14 @@ const Picks = ({ isAdmin, teamId }: PicksProps) => {
             <ArrowUp size={24} className="mx-auto mb-2" />
             <p className="text-2xl font-bold">{tradedPicks.length}</p>
             <p className="text-sm opacity-90">Picks Trocados</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <CardContent className="p-4 text-center">
+            <RefreshCw size={24} className="mx-auto mb-2" />
+            <p className="text-2xl font-bold">{swapsData?.length || 0}</p>
+            <p className="text-sm opacity-90">Pick Swaps</p>
           </CardContent>
         </Card>
       </div>
@@ -176,6 +199,23 @@ const Picks = ({ isAdmin, teamId }: PicksProps) => {
           </h2>
           {tradedPicks.map(pick => (
             <PickCard key={pick.id} pick={pick} />
+          ))}
+        </div>
+      )}
+
+      {/* Pick Swaps */}
+      {swapsData && swapsData.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold mb-4 text-nba-dark flex items-center gap-2">
+            <RefreshCw size={20} />
+            Pick Swaps
+          </h2>
+          {swapsData.map(swap => (
+            <PickSwapCard 
+              key={swap.id} 
+              swap={swap} 
+              isOwner={swap.owned_by_team_id === teamId}
+            />
           ))}
         </div>
       )}
