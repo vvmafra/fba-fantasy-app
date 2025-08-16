@@ -1,5 +1,5 @@
 import pool from '../utils/postgresClient.js';
-import { Team, CreateTeamRequest, UpdateTeamRequest } from '../types';
+import { Team, CreateTeamRequest, UpdateTeamRequest } from '../types/index.js';
 
 export class TeamService {
   // Buscar todos os times

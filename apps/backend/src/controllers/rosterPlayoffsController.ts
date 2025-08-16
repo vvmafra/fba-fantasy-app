@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { RosterPlayoffsService } from '../services/rosterPlayoffsService.js';
 import { asyncHandler } from '../middlewares/errorHandler.js';
-import { RosterPlayoffsQueryParams } from '../types';
+import { RosterPlayoffsQueryParams } from '../types/index.js';
 import pool from '../utils/postgresClient.js';
 
 export class RosterPlayoffsController {

@@ -1,4 +1,4 @@
-import postgresClient from '../utils/postgresClient';
+import postgresClient from '../utils/postgresClient.js';
 import { Waiver, CreateWaiverRequest, UpdateWaiverRequest } from '../types/index.js';
 
 export class WaiverService {

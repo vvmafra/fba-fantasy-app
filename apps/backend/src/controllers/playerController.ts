@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PlayerService } from '../services/playerService.js';
 import { asyncHandler } from '../middlewares/errorHandler.js';
-import { PlayerQueryParams, BatchUpdateRequest, TransferPlayerRequest, OCRRequest } from '../types';
+import { PlayerQueryParams, BatchUpdateRequest, TransferPlayerRequest, OCRRequest } from '../types/index.js';
 import pool from '../utils/postgresClient.js';
 
 export class PlayerController {

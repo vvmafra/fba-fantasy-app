@@ -1,5 +1,5 @@
 import pool from '../utils/postgresClient.js';
-import { User, CreateUserRequest, UpdateUserRequest, UserQueryParams, PaginatedResponse } from '../types';
+import { User, CreateUserRequest, UpdateUserRequest, UserQueryParams, PaginatedResponse } from '../types/index.js';
 
 export class UserService {
   // Buscar todos os usuários com filtros e paginação

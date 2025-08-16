@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { RosterService } from '../services/rosterService.js';
 import { asyncHandler } from '../middlewares/errorHandler.js';
-import { RosterQueryParams } from '../types';
+import { RosterQueryParams } from '../types/index.js';
 import pool from '../utils/postgresClient.js';
 
 export class RosterController {

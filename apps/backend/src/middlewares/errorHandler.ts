@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { AppError } from '../types';
+import { AppError } from '../types/index.js';
 
 // Middleware para tratamento de erros
 export const errorHandler = (
