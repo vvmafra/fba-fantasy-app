@@ -15,6 +15,7 @@ import TeamPicks from './TeamPicks';
 import { useTeamFuturePicks } from '@/hooks/usePicks';
 import { useExecutedTradesCount } from '@/hooks/useTrades';
 import { useActiveSeason } from '@/hooks/useSeasons';
+import { useWaivers } from '@/hooks/useWaivers';
 
 interface MyTeamProps {
   isAdmin: boolean;
@@ -69,6 +70,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const releasePlayerMutation = useReleasePlayer(numericTeamId);
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
   const { toast } = useToast();
+  const { addReleasedPlayer } = useWaivers();
 
   // Calcular período atual para limite de trades (a cada 2 temporadas)
   const currentSeason = activeSeasonData?.data?.season_number || 1;
@@ -97,8 +99,8 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
   // Estado para edição inline
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState<{ ovr: number; age: number }>({ ovr: 0, age: 0 });
-  const [focusedInput, setFocusedInput] = useState<'ovr' | 'age' | null>(null);
+  const [editValues, setEditValues] = useState<{ ovr: number; age: number; position: string }>({ ovr: 0, age: 0, position: '' });
+  const [focusedInput, setFocusedInput] = useState<'ovr' | 'age' | 'position' | null>(null);
   const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ovrInputRef = useRef<HTMLInputElement>(null);
   const ageInputRef = useRef<HTMLInputElement>(null);
@@ -208,8 +210,27 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const isBelowMin = currentCap < minCap;
   // const isAboveMax = currentCap > maxCap;
 
-  const handleReleasePlayer = (playerId: number) => {
-    releasePlayerMutation.mutate(playerId);
+  const handleReleasePlayer = async (playerId: number) => {
+    try {
+      // Primeiro, dispensar o jogador
+      releasePlayerMutation.mutate(playerId);
+      
+      // Depois, adicionar aos waivers se tivermos as informações necessárias
+      if (activeSeasonData?.data?.id) {
+        await addReleasedPlayer(
+          playerId, 
+          numericTeamId, 
+          activeSeasonData.data.id
+        );
+      }
+    } catch (error) {
+      console.error('Erro ao processar dispensa do jogador:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao adicionar jogador aos waivers. O jogador foi dispensado, mas não foi adicionado à lista de waivers.",
+        variant: "destructive",
+      });
+    }
   };
 
   const maxStarterOvr = useMemo(() => {
@@ -420,18 +441,21 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     // Estado local para os valores dos inputs (evita re-renderizações do componente pai)
     const [localAgeValue, setLocalAgeValue] = useState(editValues.age || '');
     const [localOvrValue, setLocalOvrValue] = useState(editValues.ovr || '');
+    const [localPositionValue, setLocalPositionValue] = useState(editValues.position || '');
     
     // Refs para os inputs
     const ageInputRef = useRef<HTMLInputElement>(null);
     const ovrInputRef = useRef<HTMLInputElement>(null);
+    const positionInputRef = useRef<HTMLInputElement>(null);
 
     // Sincronizar valores locais quando editValues mudar
     useEffect(() => {
       if (isEditing) {
         setLocalAgeValue(editValues.age || '');
         setLocalOvrValue(editValues.ovr || '');
+        setLocalPositionValue(editValues.position || '');
       }
-    }, [editValues.age, editValues.ovr, isEditing]);
+    }, [editValues.age, editValues.ovr, editValues.position, isEditing]);
 
     // Handlers locais para onChange
     const handleLocalAgeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -456,6 +480,14 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
       }
     }, []);
 
+    const handleLocalPositionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalPositionValue(value);
+      
+      // Atualizar o estado global
+      setEditValues(v => ({ ...v, position: value }));
+    }, []);
+
     // Handlers para focus/blur
     const handleAgeFocus = useCallback(() => {
       setFocusedInput('age');
@@ -463,6 +495,10 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
     const handleOvrFocus = useCallback(() => {
       setFocusedInput('ovr');
+    }, []);
+
+    const handlePositionFocus = useCallback(() => {
+      setFocusedInput('position');
     }, []);
 
     const handleInputBlur = useCallback(() => {
@@ -481,7 +517,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     // Restaurar foco quando necessário
     useLayoutEffect(() => {
       if (focusedInput && isEditing) {
-        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : 
+                        focusedInput === 'age' ? ageInputRef.current :
+                        focusedInput === 'position' ? positionInputRef.current : null;
         if (inputRef) {
           inputRef.focus();
         }
@@ -491,7 +529,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     // Manter foco durante re-renderizações
     useLayoutEffect(() => {
       if (isEditing && focusedInput) {
-        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : 
+                        focusedInput === 'age' ? ageInputRef.current :
+                        focusedInput === 'position' ? positionInputRef.current : null;
         if (inputRef && document.activeElement !== inputRef) {
           // Restaurar foco se foi perdido durante re-renderização
           inputRef.focus();
@@ -512,18 +552,36 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
             <div className="flex items-center w-full min-w-0">
               {/* Badge */}
               <div className="flex flex-col items-center justify-center col-span-1">
-                <Badge 
-                  className={`text-white w-[40px] flex items-center justify-center
-                    ${
-                      STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
-                      STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
-                      STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
-                      STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
-                      'bg-blue-800' // C
-                    }`}
-                >
-                  {isStarter ? STARTER_POSITIONS[index] : player.position}
-                </Badge>
+                {isEditing ? (
+                  <input
+                    ref={positionInputRef}
+                    type="text"
+                    className="border rounded px-1 w-[50px] text-center text-xs text-white bg-blue-600 font-medium"
+                    value={localPositionValue}
+                    maxLength={5}
+                    onChange={handleLocalPositionChange}
+                    onFocus={handlePositionFocus}
+                    onBlur={handleInputBlur}
+                    onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
+                    onTouchEnd={(e) => e.stopPropagation()}
+                    placeholder="PG/SG"
+                  />
+                ) : (
+                  <Badge 
+                    className={`text-white w-[40px] flex items-center justify-center
+                      ${
+                        STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
+                        STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
+                        STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
+                        STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
+                        'bg-blue-800' // C
+                      }`}
+                  >
+                    {isStarter ? STARTER_POSITIONS[index] : player.position}
+                  </Badge>
+                )}
               </div>
               {/* Nome, idade e OVR */}
               <div className="flex-1 flex items-center min-w-0 ml-2 sm:ml-3">
@@ -589,7 +647,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                         // Modal de confirmação
                         if (window.confirm('Tem certeza que deseja editar o jogador?')) {
                           updatePlayerMutation.mutate(
-                            { id: player.id, data: { ovr: editValues.ovr, age: editValues.age } },
+                            { id: player.id, data: { ovr: editValues.ovr, age: editValues.age, position: editValues.position } },
                             {
                               onSuccess: () => {
                                 toast({
@@ -625,7 +683,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingPlayerId(null);
-                        setEditValues({ ovr: 0, age: 0 });
+                        setEditValues({ ovr: 0, age: 0, position: '' });
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onTouchStart={(e) => e.stopPropagation()}
@@ -641,7 +699,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     onClick={(e) => {
                       e.stopPropagation();
                       setEditingPlayerId(player.id);
-                      setEditValues({ ovr: player.ovr, age: player.age });
+                      setEditValues({ ovr: player.ovr, age: player.age, position: player.position });
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
@@ -913,7 +971,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
             <h2 className="text-lg font-bold mb-2">Confirmar dispensa</h2>
             <p className="mb-4">
               Tem certeza que deseja dispensar <span className="font-semibold">{playerToRelease.name}</span>?<br />
-              Ele irá para a free agency.
+              Ele será adicionado à lista de waivers e ficará disponível para outros times.
             </p>
             <div className="flex justify-end gap-2">
               <Button

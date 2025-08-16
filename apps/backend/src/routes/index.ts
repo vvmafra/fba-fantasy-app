@@ -15,6 +15,7 @@ import seasonAwardsRoutes from './seasonAwardsRoutes.js';
 import teamStandingRoutes from './teamStandingRoutes.js';
 import editionRankingRoutes from './editionRankingRoutes.js';
 import playoffImageRoutes from './playoffImageRoutes.js';
+import waiverRoutes from './waiversRoutes.js';
 
 const router = Router();
 
@@ -44,5 +45,6 @@ router.use('/season-awards', seasonAwardsRoutes);
 router.use('/team-standings', teamStandingRoutes);
 router.use('/edition-ranking', editionRankingRoutes);
 router.use('/playoff-images', playoffImageRoutes);
+router.use('/waivers', waiverRoutes);
 
 export default router; 

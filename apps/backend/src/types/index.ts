@@ -97,6 +97,27 @@ export interface TransferPlayerRequest {
   newTeam: number;
 }
 
+// Tipos para Waivers
+export interface Waiver {
+  id: number;
+  team_id: number;
+  player_id: number;
+  season_id: number;
+  created_at: string;
+}
+
+export interface CreateWaiverRequest {
+  playerId: number;
+  teamId: number;
+  seasonId: number;
+}
+
+export interface UpdateWaiverRequest {
+  team_id?: number;
+  player_id?: number;
+  season_id?: number;
+}
+
 export interface OCRRequest {
   imageUrl: string;
   imageData?: string; // base64

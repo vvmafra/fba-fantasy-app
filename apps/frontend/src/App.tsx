@@ -36,6 +36,7 @@ import TradesAdminPage from "./pages/admin/TradesAdminPage";
 import DraftPicksPage from "./pages/admin/DraftPicksPage";
 import AwardsPage from "./pages/admin/AwardsPage";
 import StandingsPage from "./pages/admin/StandingsPage";
+import WaiversAdminPage from "./pages/admin/WaiversAdminPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -114,6 +115,7 @@ const App = () => (
                 <Route path="draft-picks" element={<DraftPicksPage />} />
                 <Route path="awards" element={<AwardsPage />} />
                 <Route path="standings" element={<StandingsPage />} />
+                <Route path="waivers" element={<WaiversAdminPage />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -51,11 +51,12 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
 
   // Estado para edição inline (apenas para admins)
   const [editingPlayerId, setEditingPlayerId] = useState<number | null>(null);
-  const [editValues, setEditValues] = useState<{ ovr: number; age: number }>({ ovr: 0, age: 0 });
-  const [focusedInput, setFocusedInput] = useState<'ovr' | 'age' | null>(null);
+  const [editValues, setEditValues] = useState<{ ovr: number; age: number; position: string }>({ ovr: 0, age: 0, position: '' });
+  const [focusedInput, setFocusedInput] = useState<'ovr' | 'age' | 'position' | null>(null);
   const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ovrInputRef = useRef<HTMLInputElement>(null);
   const ageInputRef = useRef<HTMLInputElement>(null);
+  const positionInputRef = useRef<HTMLInputElement>(null);
 
   // Função para ordenar jogadores baseado na ordem salva
   const orderPlayersBySavedOrder = useCallback((players: Player[], savedOrder: any) => {
@@ -137,7 +138,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   }, [starters]);
 
   // Handlers otimizados para focus/blur
-  const handleFocus = useCallback((inputType: 'ovr' | 'age') => {
+  const handleFocus = useCallback((inputType: 'ovr' | 'age' | 'position') => {
     // Limpar timeout anterior se existir
     if (focusTimeoutRef.current) {
       clearTimeout(focusTimeoutRef.current);
@@ -201,18 +202,21 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     // Estado local para os valores dos inputs (evita re-renderizações do componente pai)
     const [localAgeValue, setLocalAgeValue] = useState(editValues.age || '');
     const [localOvrValue, setLocalOvrValue] = useState(editValues.ovr || '');
+    const [localPositionValue, setLocalPositionValue] = useState(editValues.position || '');
     
     // Refs para os inputs
     const ageInputRef = useRef<HTMLInputElement>(null);
     const ovrInputRef = useRef<HTMLInputElement>(null);
+    const positionInputRef = useRef<HTMLInputElement>(null);
 
     // Sincronizar valores locais quando editValues mudar
     useEffect(() => {
       if (isEditing) {
         setLocalAgeValue(editValues.age || '');
         setLocalOvrValue(editValues.ovr || '');
+        setLocalPositionValue(editValues.position || '');
       }
-    }, [editValues.age, editValues.ovr, isEditing]);
+    }, [editValues.age, editValues.ovr, editValues.position, isEditing]);
 
     // Handlers locais para onChange
     const handleLocalAgeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,6 +241,14 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
       }
     }, []);
 
+    const handleLocalPositionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setLocalPositionValue(value);
+      
+      // Atualizar o estado global
+      setEditValues(v => ({ ...v, position: value }));
+    }, []);
+
     // Handlers para focus/blur
     const handleAgeFocus = useCallback(() => {
       setFocusedInput('age');
@@ -244,6 +256,10 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
 
     const handleOvrFocus = useCallback(() => {
       setFocusedInput('ovr');
+    }, []);
+
+    const handlePositionFocus = useCallback(() => {
+      setFocusedInput('position');
     }, []);
 
     const handleInputBlur = useCallback(() => {
@@ -261,7 +277,9 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     // Restaurar foco quando necessário
     useLayoutEffect(() => {
       if (focusedInput && isEditing) {
-        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : 
+                        focusedInput === 'age' ? ageInputRef.current :
+                        focusedInput === 'position' ? positionInputRef.current : null;
         if (inputRef) {
           inputRef.focus();
         }
@@ -271,7 +289,9 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     // Manter foco durante re-renderizações
     useLayoutEffect(() => {
       if (isEditing && focusedInput) {
-        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : ageInputRef.current;
+        const inputRef = focusedInput === 'ovr' ? ovrInputRef.current : 
+                        focusedInput === 'age' ? ageInputRef.current :
+                        focusedInput === 'position' ? positionInputRef.current : null;
         if (inputRef && document.activeElement !== inputRef) {
           // Restaurar foco se foi perdido durante re-renderização
           inputRef.focus();
@@ -285,18 +305,36 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
           <div className="flex items-center justify-between">
             {/* Coluna do badge */}
             <div className="flex flex-col items-center justify-center col-span-1">
-              <Badge 
-                className={`text-white w-[40px] flex items-center justify-center 
-                  ${
-                    STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
-                    STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
-                    STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
-                    STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
-                    'bg-blue-800' // C
-                  }`}
-              >
-                {isStarter ? STARTER_POSITIONS[index] : player.position}
-              </Badge>
+              {isEditing ? (
+                <input
+                  ref={positionInputRef}
+                  type="text"
+                  className="border rounded px-1 w-[50px] text-center text-xs text-white bg-blue-600 font-medium"
+                  value={localPositionValue}
+                  maxLength={5}
+                  onChange={handleLocalPositionChange}
+                  onFocus={handlePositionFocus}
+                  onBlur={handleInputBlur}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  placeholder="PG/SG"
+                />
+              ) : (
+                <Badge 
+                  className={`text-white w-[40px] flex items-center justify-center 
+                    ${
+                      STARTER_POSITIONS[index] === 'PG' ? 'bg-blue-600' :
+                      STARTER_POSITIONS[index] === 'SG' ? 'bg-blue-600' :
+                      STARTER_POSITIONS[index] === 'SF' ? 'bg-blue-700' :
+                      STARTER_POSITIONS[index] === 'PF' ? 'bg-blue-700' :
+                      'bg-blue-800' // C
+                    }`}
+                >
+                  {isStarter ? STARTER_POSITIONS[index] : player.position}
+                </Badge>
+              )}
             </div>
             {/* Conteúdo do jogador */}
             <div className="flex items-center"></div>
@@ -367,7 +405,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                         // Modal de confirmação
                         if (window.confirm('Tem certeza que deseja editar o jogador?')) {
                           updatePlayerMutation.mutate(
-                            { id: player.id, data: { ovr: editValues.ovr, age: editValues.age } },
+                            { id: player.id, data: { ovr: editValues.ovr, age: editValues.age, position: editValues.position } },
                             {
                               onSuccess: () => {
                                 toast({
@@ -400,7 +438,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                       className="text-red-600 hover:text-red-700"
                       onClick={() => {
                         setEditingPlayerId(null);
-                        setEditValues({ ovr: 0, age: 0 });
+                        setEditValues({ ovr: 0, age: 0, position: '' });
                       }}
                     >
                       <X size={16} />
@@ -413,7 +451,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
                     className="text-blue-600 hover:text-blue-700"
                     onClick={() => {
                       setEditingPlayerId(player.id);
-                      setEditValues({ ovr: player.ovr, age: player.age });
+                      setEditValues({ ovr: player.ovr, age: player.age, position: player.position });
                     }}
                   >
                     <Pencil size={16} />

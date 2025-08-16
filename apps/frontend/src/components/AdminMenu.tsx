@@ -10,7 +10,8 @@ import {
   Plus,
   Settings,
   MessageSquare,
-  Crown
+  Crown,
+  UserX
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -87,6 +88,12 @@ const AdminMenu = ({ children }: AdminMenuProps) => {
           label: 'Jogadores e Draft',
           description: 'Gerenciar jogadores e draft',
           href: '/admin/draft-picks'
+        },
+        {
+          icon: UserX,
+          label: 'Waivers',
+          description: 'Gerenciar lista de waivers',
+          href: '/admin/waivers'
         }       
       ]
     },
