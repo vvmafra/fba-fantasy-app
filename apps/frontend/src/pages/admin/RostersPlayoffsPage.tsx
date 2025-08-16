@@ -53,7 +53,7 @@ export default function RostersPlayoffsPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'team_name' | 'created_at'>('created_at');
+  const [sortBy, setSortBy] = useState<'team_name' | 'updated_at'>('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [checkedRosters, setCheckedRosters] = useState<Set<number>>(new Set());
   const { toast } = useToast();
@@ -320,7 +320,7 @@ export default function RostersPlayoffsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="team_name">Nome do Time</SelectItem>
-                  <SelectItem value="created_at">Data de Envio</SelectItem>
+                  <SelectItem value="updated_at">Data de Envio</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -464,7 +464,7 @@ export default function RostersPlayoffsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-muted-foreground">
-                          {formatDate(roster.created_at)}
+                          {formatDate(roster.updated_at)}
                         </div>
                       </TableCell>
                     </TableRow>

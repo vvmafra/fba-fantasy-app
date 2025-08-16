@@ -28,6 +28,7 @@ export const createRosterPlayoffsSchema = z.object({
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
   rotation_made: z.boolean().optional(),
+  updated_at: z.string().optional(),
 });
 
 // Schema para atualização de roster playoffs
@@ -58,6 +59,7 @@ export const updateRosterPlayoffsSchema = z.object({
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
   rotation_made: z.boolean().optional(),
+  updated_at: z.string().optional(),
 });
 
 // Schema para ID do roster playoffs

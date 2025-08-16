@@ -20,6 +20,7 @@ export interface RosterPlayoffs {
   defensive_rebounding?: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference' | null;
   rotation_made?: boolean;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface CreateRosterPlayoffsRequest {

@@ -30,6 +30,7 @@ export const createRosterSeasonSchema = z.object({
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
   rotation_made: z.boolean().optional(),
+  updated_at: z.string().optional(),
 });
 
 // Schema para atualização de roster
@@ -62,6 +63,7 @@ export const updateRosterSeasonSchema = z.object({
     errorMap: () => ({ message: 'Rebote defensivo deve ser uma das opções válidas' })
   }).optional(),
   rotation_made: z.boolean().optional(),
+  updated_at: z.string().optional(),
 });
 
 // Schema para ID do roster

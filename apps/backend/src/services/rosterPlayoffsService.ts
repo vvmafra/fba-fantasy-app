@@ -45,7 +45,7 @@ export class RosterPlayoffsService {
 
   // Buscar todos os rosters playoffs com paginação e filtros
   static async getAllRosters(params: RosterPlayoffsQueryParams): Promise<PaginatedResponse<RosterPlayoffs>> {
-    const { page = 1, limit = 10, sortBy = 'created_at', sortOrder = 'desc', season_id, team_id, rotation_style, game_style, offense_style, defense_style } = params;
+    const { page = 1, limit = 10, sortBy = 'updated_at', sortOrder = 'desc', season_id, team_id, rotation_style, game_style, offense_style, defense_style } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -211,8 +211,8 @@ export class RosterPlayoffsService {
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           total_players_rotation, age_preference, game_style, franchise_player_id, 
           offense_style, defense_style, offensive_tempo, offensive_rebounding, 
-          defensive_aggression, defensive_rebounding, rotation_made
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
+          defensive_aggression, defensive_rebounding, rotation_made, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, (NOW() AT TIME ZONE 'America/Sao_Paulo')) RETURNING *`,
         values
       );
 
@@ -231,6 +231,14 @@ export class RosterPlayoffsService {
       const updates: string[] = [];
       const values: any[] = [];
       let paramCount = 0;
+
+      // Sempre definir rotation_made como false quando atualizar
+      paramCount++;
+      updates.push(`rotation_made = $${paramCount}`);
+      values.push(false);
+
+      // Sempre atualizar o timestamp (sem parâmetro)
+      updates.push(`updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')`);
 
       if (rosterData.season_id !== undefined) {
         paramCount++;
@@ -306,11 +314,6 @@ export class RosterPlayoffsService {
         paramCount++;
         updates.push(`defensive_rebounding = $${paramCount}`);
         values.push(rosterData.defensive_rebounding);
-      }
-      if (rosterData.rotation_made !== undefined) {
-        paramCount++;
-        updates.push(`rotation_made = $${paramCount}`);
-        values.push(rosterData.rotation_made);
       }
 
       if (updates.length === 0) {
@@ -397,7 +400,7 @@ export class RosterPlayoffsService {
     try {
       this.checkPostgresClient();
       
-      const { season_id, sortBy = 'created_at', sortOrder = 'desc' } = params;
+      const { season_id, sortBy = 'updated_at', sortOrder = 'desc' } = params;
       
       let sql = `
         SELECT 

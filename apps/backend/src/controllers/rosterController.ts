@@ -132,7 +132,7 @@ export class RosterController {
   static getAllRostersWithDetails = asyncHandler(async (req: Request, res: Response) => {
     try {
       const params: { season_id?: number; sortBy?: string; sortOrder?: 'asc' | 'desc' } = {
-        sortBy: req.query['sortBy'] as string || 'created_at',
+        sortBy: req.query['sortBy'] as string || 'updated_at',
         sortOrder: (req.query['sortOrder'] as 'asc' | 'desc') || 'desc'
       };
 
