@@ -75,6 +75,18 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
   };
 
   const handleAddAsset = (participantIndex: number, assetType: 'player' | 'pick') => {
+    // Verificar se já existe um asset do mesmo tipo sem valores definidos
+    const existingEmptyAsset = participants[participantIndex].assets.find(
+      asset => asset.asset_type === assetType && 
+      ((assetType === 'player' && !asset.player_id) || 
+       (assetType === 'pick' && !asset.pick_id))
+    );
+
+    if (existingEmptyAsset) {
+      alert(`Já existe um ${assetType === 'player' ? 'jogador' : 'pick'} não configurado. Configure-o primeiro antes de adicionar outro.`);
+      return;
+    }
+
     const updatedParticipants = [...participants];
     let to_participant_id: number | undefined = undefined;
     if (participants.length === 2) {
@@ -102,6 +114,25 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
     field: 'player_id' | 'pick_id' | 'to_participant_id', 
     value: number
   ) => {
+    // Verificar se o valor já está sendo usado em outro asset
+    if (field === 'player_id' || field === 'pick_id') {
+      const isDuplicate = participants.some((participant, pIndex) => 
+        participant.assets.some((asset, aIndex) => {
+          if (pIndex === participantIndex && aIndex === assetIndex) return false; // Ignorar o asset atual
+          
+          if (field === 'player_id' && asset.player_id === value) return true;
+          if (field === 'pick_id' && asset.pick_id === value) return true;
+          return false;
+        })
+      );
+
+      if (isDuplicate) {
+        const assetType = field === 'player_id' ? 'jogador' : 'pick';
+        alert(`Este ${assetType} já está sendo usado em outra parte da trade.`);
+        return;
+      }
+    }
+
     const updatedParticipants = [...participants];
     updatedParticipants[participantIndex].assets[assetIndex] = {
       ...updatedParticipants[participantIndex].assets[assetIndex],
@@ -167,6 +198,27 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
       return;
     }
 
+    // Validar se há assets duplicados
+    const allPlayerIds = participants.flatMap(p => 
+      p.assets.filter(a => a.asset_type === 'player' && a.player_id).map(a => a.player_id!)
+    );
+    const allPickIds = participants.flatMap(p => 
+      p.assets.filter(a => a.asset_type === 'pick' && a.pick_id).map(a => a.pick_id!)
+    );
+
+    const hasDuplicatePlayers = allPlayerIds.length !== new Set(allPlayerIds).size;
+    const hasDuplicatePicks = allPickIds.length !== new Set(allPickIds).size;
+
+    if (hasDuplicatePlayers) {
+      alert('Há jogadores duplicados na trade. Cada jogador só pode aparecer uma vez.');
+      return;
+    }
+
+    if (hasDuplicatePicks) {
+      alert('Há picks duplicadas na trade. Cada pick só pode aparecer uma vez.');
+      return;
+    }
+
     const tradeData: CreateTradeRequest = {
       season_id: activeSeason.data.id, // sempre usa a season ativa
       created_by_team: participants[0].team_id,
@@ -203,22 +255,51 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
     return `${pick.season_year} - ${pick.original_team_name} (${pick.round}ª rodada)`;
   };
 
-  const getTeamPlayers = (teamId: number) => {
+  const getTeamPlayers = (teamId: number, excludeAssetIndex?: number, excludeParticipantIndex?: number) => {
     if (!players?.data) return [];
 
     const filteredPlayers = players.data.filter(player => player.team_id === teamId);
+    
+    // Filtrar jogadores já selecionados em outros assets
+    const availablePlayers = filteredPlayers.filter(player => {
+      const isAlreadySelected = participants.some((participant, pIndex) => 
+        participant.assets.some((asset, aIndex) => {
+          // Ignorar o asset atual se estivermos editando
+          if (pIndex === excludeParticipantIndex && aIndex === excludeAssetIndex) return false;
+          
+          return asset.asset_type === 'player' && asset.player_id === player.id;
+        })
+      );
+      
+      return !isAlreadySelected;
+    });
+    
     // Ordenar por OVR (maior para menor)
-    return filteredPlayers.sort((a, b) => b.ovr - a.ovr);
+    return availablePlayers.sort((a, b) => b.ovr - a.ovr);
   };
 
-  const getTeamPicks = (teamId: number) => {
+  const getTeamPicks = (teamId: number, excludeAssetIndex?: number, excludeParticipantIndex?: number) => {
     if (!allPicks) return [];
     
     // Filtrar picks que pertencem ao time (current_team_id = teamId)
     const teamPicks = allPicks.filter(pick => pick.current_team_id === teamId);
     
+    // Filtrar picks já selecionadas em outros assets
+    const availablePicks = teamPicks.filter(pick => {
+      const isAlreadySelected = participants.some((participant, pIndex) => 
+        participant.assets.some((asset, aIndex) => {
+          // Ignorar o asset atual se estivermos editando
+          if (pIndex === excludeParticipantIndex && aIndex === excludeAssetIndex) return false;
+          
+          return asset.asset_type === 'pick' && asset.pick_id === pick.id;
+        })
+      );
+      
+      return !isAlreadySelected;
+    });
+    
     // Ordenar por temporada (mais recente primeiro) e depois por rodada (menor primeiro)
-    return teamPicks.sort((a, b) => {
+    return availablePicks.sort((a, b) => {
       // Primeiro ordenar por temporada (mais recente primeiro)
       const seasonDiff = parseInt(b.season_year) - parseInt(a.season_year);
       if (seasonDiff !== 0) return seasonDiff;
@@ -323,6 +404,7 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
                           variant="outline"
                           onClick={() => handleAddAsset(participantIndex, 'player')}
                           className="w-full sm:w-auto"
+                          disabled={getTeamPlayers(participant.team_id).length === 0}
                         >
                           <User size={14} className="mr-1" />
                           Adicionar Jogador
@@ -332,11 +414,24 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
                           variant="outline"
                           onClick={() => handleAddAsset(participantIndex, 'pick')}
                           className="w-full sm:w-auto"
+                          disabled={getTeamPicks(participant.team_id).length === 0}
                         >
                           <Calendar size={14} className="mr-1" />
                           Adicionar Pick
                         </Button>
                       </div>
+                      
+                      {/* Mensagens informativas */}
+                      {getTeamPlayers(participant.team_id).length === 0 && (
+                        <p className="text-xs text-amber-600">
+                          Todos os jogadores deste time já estão sendo negociados
+                        </p>
+                      )}
+                      {getTeamPicks(participant.team_id).length === 0 && (
+                        <p className="text-xs text-amber-600">
+                          Todas as picks deste time já estão sendo negociadas
+                        </p>
+                      )}
                     </div>
 
                     {participant.assets.map((asset, assetIndex) => (
@@ -376,7 +471,7 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
                               <SelectValue placeholder="Selecionar jogador" />
                             </SelectTrigger>
                             <SelectContent>
-                              {getTeamPlayers(participant.team_id).map(player => (
+                              {getTeamPlayers(participant.team_id, assetIndex, participantIndex).map(player => (
                                 <SelectItem key={player.id} value={player.id.toString()}>
                                   {player.position}: {player.name} - {player.ovr} | {player.age}y
                                 </SelectItem>
@@ -393,12 +488,12 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
                                 <SelectValue placeholder="Selecionar pick" />
                               </SelectTrigger>
                               <SelectContent>
-                                {getTeamPicks(participant.team_id).length === 0 ? (
+                                {getTeamPicks(participant.team_id, assetIndex, participantIndex).length === 0 ? (
                                   <div className="px-2 py-1 text-sm text-gray-500">
                                     Nenhuma pick disponível para trade
                                   </div>
                                 ) : (
-                                  getTeamPicks(participant.team_id).map((pick) => (
+                                  getTeamPicks(participant.team_id, assetIndex, participantIndex).map((pick) => (
                                     <SelectItem key={pick.id} value={pick.id.toString()}>
                                       {pick.season_year} - {pick.original_team_name} ({pick.round}ª rodada)
                                     </SelectItem>
