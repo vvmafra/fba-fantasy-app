@@ -174,7 +174,7 @@ export class DraftPickService {
     }
 
     paramCount++;
-    updates.push(`updated_at = NOW()`);
+            updates.push(`updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')`);
     values.push(id);
 
     const { rows } = await pool.query(`
@@ -204,7 +204,7 @@ export class DraftPickService {
   static async toggleAddedTo2k(id: number): Promise<DraftPick> {
     const { rows } = await pool.query(`
       UPDATE draft_picks 
-      SET is_added_to_2k = NOT is_added_to_2k, updated_at = NOW()
+              SET is_added_to_2k = NOT is_added_to_2k, updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
       WHERE id = $1
       RETURNING *
     `, [id]);
@@ -236,7 +236,7 @@ export class DraftPickService {
 
     const { rows } = await pool.query(`
       UPDATE draft_picks 
-      SET player_id = $1, updated_at = NOW()
+      SET player_id = $1, updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
       WHERE id = $2
       RETURNING *
     `, [player_id, id]);
@@ -269,7 +269,7 @@ export class DraftPickService {
     // Associar o jogador ao draft pick
     const { rows } = await pool.query(`
       UPDATE draft_picks 
-      SET player_id = $1, updated_at = NOW()
+      SET player_id = $1, updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
       WHERE id = $2
       RETURNING *
     `, [playerId, id]);

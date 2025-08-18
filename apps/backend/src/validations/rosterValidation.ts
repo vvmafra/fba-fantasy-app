@@ -6,17 +6,17 @@ export const createRosterSeasonSchema = z.object({
   team_id: z.number().positive('ID do time deve ser positivo'),
   rotation_style: z.enum(['automatic', 'manual'], {
     errorMap: () => ({ message: 'Estilo de rotação deve ser "automatic" ou "manual"' })
-  }),
+  }).default('automatic'),
   minutes_starting: z.any().optional(),
   minutes_bench: z.any().optional(),
   gleague1_player_id: z.number().positive('ID do jogador G-League 1 deve ser positivo').nullable().optional(),
   gleague2_player_id: z.number().positive('ID do jogador G-League 2 deve ser positivo').nullable().optional(),
   total_players_rotation: z.number().min(8, 'Total de jogadores na rotação deve ser pelo menos 8').max(15, 'Total de jogadores na rotação não pode exceder 15').optional(),
   age_preference: z.number().min(0, 'Preferência de idade deve ser entre 0 e 100').max(100, 'Preferência de idade deve ser entre 0 e 100').nullable().optional(),
-  game_style: z.string().max(50, 'Estilo de jogo deve ter no máximo 50 caracteres'),
+  game_style: z.string().min(1, 'Estilo de jogo é obrigatório').max(50, 'Estilo de jogo deve ter no máximo 50 caracteres'),
   franchise_player_id: z.number().positive('ID do jogador franquia deve ser positivo').nullable().optional(),
-  offense_style: z.string().max(50, 'Estilo de ataque deve ter no máximo 50 caracteres'),
-  defense_style: z.string().max(50, 'Estilo de defesa deve ter no máximo 50 caracteres'),
+  offense_style: z.string().min(1, 'Estilo de ataque é obrigatório').max(50, 'Estilo de ataque deve ter no máximo 50 caracteres'),
+  defense_style: z.string().min(1, 'Estilo de defesa é obrigatório').max(50, 'Estilo de defesa deve ter no máximo 50 caracteres'),
   offensive_tempo: z.enum(['No preference', 'Patient Offense', 'Average Tempo', 'Shoot at Will'], {
     errorMap: () => ({ message: 'Tempo ofensivo deve ser uma das opções válidas' })
   }).optional(),
@@ -46,10 +46,10 @@ export const updateRosterSeasonSchema = z.object({
   gleague2_player_id: z.number().positive('ID do jogador G-League 2 deve ser positivo').nullable().optional(),
   total_players_rotation: z.number().min(8, 'Total de jogadores na rotação deve ser pelo menos 8').max(15, 'Total de jogadores na rotação não pode exceder 15').optional(),
   age_preference: z.number().min(0, 'Preferência de idade deve ser entre 0 e 100').max(100, 'Preferência de idade deve ser entre 0 e 100').nullable().optional(),
-  game_style: z.string().max(50, 'Estilo de jogo deve ter no máximo 50 caracteres'),
+  game_style: z.string().min(1, 'Estilo de jogo é obrigatório').max(50, 'Estilo de jogo deve ter no máximo 50 caracteres').optional(),
   franchise_player_id: z.number().positive('ID do jogador franquia deve ser positivo').nullable().optional(),
-  offense_style: z.string().max(50, 'Estilo de ataque deve ter no máximo 50 caracteres'),
-  defense_style: z.string().max(50, 'Estilo de defesa deve ter no máximo 50 caracteres'),
+  offense_style: z.string().min(1, 'Estilo de ataque é obrigatório').max(50, 'Estilo de ataque deve ter no máximo 50 caracteres').optional(),
+  defense_style: z.string().min(1, 'Estilo de defesa é obrigatório').max(50, 'Estilo de defesa deve ter no máximo 50 caracteres').optional(),
   offensive_tempo: z.enum(['No preference', 'Patient Offense', 'Average Tempo', 'Shoot at Will'], {
     errorMap: () => ({ message: 'Tempo ofensivo deve ser uma das opções válidas' })
   }).optional(),

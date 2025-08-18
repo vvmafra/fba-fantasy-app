@@ -4,14 +4,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface StrategyOptionsProps {
-  offensiveTempo: string;
-  setOffensiveTempo: (value: string) => void;
-  offensiveRebounding: string;
-  setOffensiveRebounding: (value: string) => void;
-  defensiveAggression: string;
-  setDefensiveAggression: (value: string) => void;
-  defensiveRebounding: string;
-  setDefensiveRebounding: (value: string) => void;
+  offensiveTempo: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will';
+  setOffensiveTempo: (value: 'No preference' | 'Patient Offense' | 'Average Tempo' | 'Shoot at Will') => void;
+  offensiveRebounding: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back';
+  setOffensiveRebounding: (value: 'Limit Transition' | 'No preference' | 'Crash Offensive Glass' | 'Some Crash, Others Get Back') => void;
+  defensiveAggression: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression';
+  setDefensiveAggression: (value: 'Play Physical Defense' | 'No preference' | 'Conservative Defense' | 'Neutral Defensive Aggression') => void;
+  defensiveRebounding: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference';
+  setDefensiveRebounding: (value: 'Run in Transition' | 'Crash Defensive Glass' | 'Some Crash, Others Run' | 'No preference') => void;
 }
 
 const offensiveTempoOptions = [

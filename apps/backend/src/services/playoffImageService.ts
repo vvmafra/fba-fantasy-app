@@ -111,7 +111,7 @@ export class PlayoffImageService {
     
     if (fields.length === 0) throw new Error('Nenhum campo para atualizar');
     
-    fields.push(`updated_at = NOW()`);
+            fields.push(`updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')`);
     values.push(id);
     
     const sql = `UPDATE playoff_images SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`;

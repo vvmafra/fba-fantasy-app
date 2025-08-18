@@ -194,24 +194,43 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
           
           const startingPlayerIds = minutesStartingArr.map(([id]) => id);
           const benchPlayerIds = minutesBenchArr.map(([id]) => id);
-          const orderedPlayerIds = [...startingPlayerIds, ...benchPlayerIds];
-          const savedPlayerIds = new Set(orderedPlayerIds);
+          
+          // IDs dos jogadores G-League salvos no banco
+          const gleaguePlayerIds = [
+            existingRoster.gleague1_player_id,
+            existingRoster.gleague2_player_id
+          ].filter(Boolean) as number[];
+          
+          // Combinar todos os IDs únicos, priorizando a ordem dos minutos
+          const allPlayerIds = [...new Set([...startingPlayerIds, ...benchPlayerIds, ...gleaguePlayerIds])];
+          const savedPlayerIds = new Set(allPlayerIds);
+
+
 
           // Jogadores do roster salvo, na ordem
-          const playersFromRoster = orderedPlayerIds
+          const playersFromRoster = allPlayerIds
             .map(playerId => {
               const player = sortedPlayers.find(p => p.id === playerId);
               if (!player) return null;
               const minStart = minutesStartingArr.find(([pid]) => pid === playerId)?.[1];
               const minBench = minutesBenchArr.find(([pid]) => pid === playerId)?.[1];
+              const isGLeague = gleaguePlayerIds.includes(playerId);
+              
               return {
                 ...player,
                 minutes: minStart ?? minBench ?? 0,
-                isGLeague: existingRoster.gleague1_player_id === playerId || existingRoster.gleague2_player_id === playerId,
+                isGLeague: isGLeague,
                 isStarter: startingPlayerIds.includes(playerId)
               };
             })
             .filter(Boolean) as PlayerWithMinutes[];
+
+          // Garantir que jogadores da G-League tenham minutos 0 se não estiverem em nenhuma lista
+          playersFromRoster.forEach(player => {
+            if (player.isGLeague && !startingPlayerIds.includes(player.id) && !benchPlayerIds.includes(player.id)) {
+              player.minutes = 0;
+            }
+          });
 
           // Jogadores novos (não estavam no roster salvo)
           const newPlayers = sortedPlayers
@@ -269,6 +288,30 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
             }));
           }
         }
+
+        // Garantir que jogadores da G-League sejam sempre incluídos na lista principal
+        if (existingRoster) {
+          const gleaguePlayerIds = [
+            existingRoster.gleague1_player_id,
+            existingRoster.gleague2_player_id
+          ].filter(Boolean) as number[];
+
+          // Adicionar jogadores da G-League que não estão na lista principal
+          gleaguePlayerIds.forEach(gleagueId => {
+            const existingPlayer = playersWithMinutes.find(p => p.id === gleagueId);
+            if (!existingPlayer) {
+              const player = sortedPlayers.find(p => p.id === gleagueId);
+              if (player) {
+                playersWithMinutes.push({
+                  ...player,
+                  minutes: 0,
+                  isGLeague: true,
+                  isStarter: false
+                });
+              }
+            }
+          });
+        }
         
         setPlayers(playersWithMinutes);
         
@@ -280,15 +323,53 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
           const startingPlayerIds = minutesStartingArr.map(([id]) => id);
           const benchPlayerIds = minutesBenchArr.map(([id]) => id);
 
+          // Garantir que jogadores da G-League sempre apareçam
+          const gleaguePlayerIds = [
+            existingRoster.gleague1_player_id,
+            existingRoster.gleague2_player_id
+          ].filter(Boolean) as number[];
+
+          // Incluir todos os jogadores nas listas, mesmo os G-League
           const starters = playersWithMinutes.filter(p => startingPlayerIds.includes(p.id));
           const bench = playersWithMinutes.filter(p => benchPlayerIds.includes(p.id));
 
+          // Adicionar jogadores da G-League que não estão em nenhuma lista
+          const gleaguePlayersNotInLists = playersWithMinutes.filter(p => 
+            gleaguePlayerIds.includes(p.id) && 
+            !startingPlayerIds.includes(p.id) && 
+            !benchPlayerIds.includes(p.id)
+          );
+
+          // Combinar reservas com jogadores da G-League não listados
+          const finalBench = [...bench, ...gleaguePlayersNotInLists];
+
+
+
           setStarters(starters);
-          setBench(bench);
+          setBench(finalBench);
         } else {
-          // Usar ordem atual dos jogadores
-          setStarters(playersWithMinutes.slice(0, 5));
-          setBench(playersWithMinutes.slice(5));
+          // Usar ordem atual dos jogadores, mas garantir que jogadores da G-League apareçam
+          if (existingRoster) {
+            const gleaguePlayerIds = [
+              existingRoster.gleague1_player_id,
+              existingRoster.gleague2_player_id
+            ].filter(Boolean) as number[];
+
+            // Separar jogadores ativos e da G-League
+            const activePlayers = playersWithMinutes.filter(p => !p.isGLeague);
+            const gleaguePlayers = playersWithMinutes.filter(p => p.isGLeague);
+
+            // Definir titulares (primeiros 5 ativos) e reservas (resto + G-League)
+            const starters = activePlayers.slice(0, 5);
+            const bench = [...activePlayers.slice(5), ...gleaguePlayers];
+
+            setStarters(starters);
+            setBench(bench);
+          } else {
+            // Usar ordem padrão
+            setStarters(playersWithMinutes.slice(0, 5));
+            setBench(playersWithMinutes.slice(5));
+          }
         }
       }
     } catch (error) {
@@ -424,10 +505,14 @@ export function RosterSeasonForm({ isOpen, onClose, teamId, seasonId, isAdmin, o
         // Separar titulares (primeiros 5 ativos) e reservas (resto)
         const startingPlayers = activePlayersInOrder.slice(0, 5);
         const benchPlayers = activePlayersInOrder.slice(5);
+        
+        // Incluir jogadores G-League no minutes_bench também
+        const gleaguePlayersForBench = currentOrder.filter(p => p.isGLeague);
+        const allBenchPlayers = [...benchPlayers, ...gleaguePlayersForBench];
 
         // Criar objetos de minutos preservando a ordem dos jogadores
         const minutesStarting: [number, number][] = startingPlayers.map(player => [player.id, player.minutes]);
-        const minutesBench: [number, number][] = benchPlayers.map(player => [player.id, player.minutes]);
+        const minutesBench: [number, number][] = allBenchPlayers.map(player => [player.id, player.minutes]);
 
         rosterData = {
           season_id: seasonId,

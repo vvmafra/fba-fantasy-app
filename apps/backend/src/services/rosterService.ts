@@ -171,24 +171,30 @@ export class RosterService {
     try {
       this.checkPostgresClient();
       
+      // Validar campos obrigatórios
+      if (!rosterData.game_style || !rosterData.offense_style || !rosterData.defense_style) {
+        throw new Error('Campos game_style, offense_style e defense_style são obrigatórios');
+      }
+      
+      // Garantir que todos os campos tenham valores válidos
       const values = [
-        rosterData.season_id,
-        rosterData.team_id,
-        rosterData.rotation_style,
-        rosterData.minutes_starting ? JSON.stringify(rosterData.minutes_starting) : null,
-        rosterData.minutes_bench ? JSON.stringify(rosterData.minutes_bench) : null,
-        rosterData.gleague1_player_id,
-        rosterData.gleague2_player_id,
-        rosterData.total_players_rotation,
-        rosterData.age_preference,
+        rosterData.season_id || 0,
+        rosterData.team_id || 0,
+        rosterData.rotation_style || 'automatic',
+        rosterData.minutes_starting ? JSON.stringify(rosterData.minutes_starting) : JSON.stringify([]),
+        rosterData.minutes_bench ? JSON.stringify(rosterData.minutes_bench) : JSON.stringify([]),
+        rosterData.gleague1_player_id || null,
+        rosterData.gleague2_player_id || null,
+        rosterData.total_players_rotation || 10,
+        rosterData.age_preference || null,
         rosterData.game_style,
-        rosterData.franchise_player_id,
+        rosterData.franchise_player_id || null,
         rosterData.offense_style,
         rosterData.defense_style,
-        rosterData.offensive_tempo,
-        rosterData.offensive_rebounding,
-        rosterData.defensive_aggression,
-        rosterData.defensive_rebounding,
+        rosterData.offensive_tempo || null,
+        rosterData.offensive_rebounding || null,
+        rosterData.defensive_aggression || null,
+        rosterData.defensive_rebounding || null,
         rosterData.rotation_made || false
       ];
 
@@ -198,8 +204,8 @@ export class RosterService {
           gleague1_player_id, gleague2_player_id, total_players_rotation, 
           age_preference, game_style, franchise_player_id, offense_style, defense_style,
           offensive_tempo, offensive_rebounding, defensive_aggression, defensive_rebounding,
-          rotation_made, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, (NOW() AT TIME ZONE 'America/Sao_Paulo')) RETURNING *`,
+          rotation_made
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
         values
       );
 

@@ -252,7 +252,7 @@ export class SeasonService {
         )
         UPDATE trade_participants 
         SET response_status = 'rejected', 
-            responded_at = NOW() 
+            responded_at = (NOW() AT TIME ZONE 'America/Sao_Paulo') 
         WHERE trade_id IN (SELECT id FROM cancelled_trades)
       `);
       
@@ -305,7 +305,7 @@ export class SeasonService {
         // Criar a temporada alvo
         const { rows: newSeason } = await client.query(`
           INSERT INTO seasons (season_number, total_seasons, is_active, year, created_at)
-          VALUES ($1, $2, $3, $4, NOW())
+          VALUES ($1, $2, $3, $4, (NOW() AT TIME ZONE 'America/Sao_Paulo'))
           RETURNING id, year, season_number
         `, [targetSeasonNumber, 10, false, targetYear]);
         

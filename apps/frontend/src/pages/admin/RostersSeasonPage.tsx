@@ -31,6 +31,7 @@ interface RosterWithDetails {
   defensive_rebounding?: string;
   rotation_made?: boolean;
   created_at: string;
+  updated_at: string;
   starting_players: Array<{
     id: number;
     name: string;
@@ -481,7 +482,7 @@ export default function RostersSeasonPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-muted-foreground">
-                          {formatDate(roster.created_at)}
+                          {formatDate(roster.updated_at)}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -621,7 +622,7 @@ export default function RostersSeasonPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-muted-foreground">
-                          {formatDate(roster.created_at)}
+                          {formatDate(roster.updated_at)}
                         </div>
                       </TableCell>
                     </TableRow>

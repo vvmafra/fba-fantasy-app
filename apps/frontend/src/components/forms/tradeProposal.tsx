@@ -133,6 +133,40 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
       return;
     }
 
+    // Validar se todos os participantes têm pelo menos um asset
+    const hasParticipantWithoutAssets = participants.some(participant => 
+      participant.assets.length === 0
+    );
+
+    if (hasParticipantWithoutAssets) {
+      alert('Todos os participantes devem ter pelo menos um asset para participar da trade.');
+      return;
+    }
+
+    // Validar se as picks são válidas
+    const hasInvalidPicks = participants.some(participant => 
+      participant.assets.some(asset => 
+        asset.asset_type === 'pick' && !asset.pick_id
+      )
+    );
+
+    if (hasInvalidPicks) {
+      alert('Todas as picks devem ser selecionadas corretamente.');
+      return;
+    }
+
+    // Validar se os jogadores são válidos
+    const hasInvalidPlayers = participants.some(participant => 
+      participant.assets.some(asset => 
+        asset.asset_type === 'player' && !asset.player_id
+      )
+    );
+
+    if (hasInvalidPlayers) {
+      alert('Todos os jogadores devem ser selecionados corretamente.');
+      return;
+    }
+
     const tradeData: CreateTradeRequest = {
       season_id: activeSeason.data.id, // sempre usa a season ativa
       created_by_team: participants[0].team_id,
@@ -183,8 +217,15 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
     // Filtrar picks que pertencem ao time (current_team_id = teamId)
     const teamPicks = allPicks.filter(pick => pick.current_team_id === teamId);
     
-    // Ordenar por ano (mais recente primeiro)
-    return teamPicks.sort((a, b) => parseInt(b.season_year) - parseInt(a.season_year));
+    // Ordenar por temporada (mais recente primeiro) e depois por rodada (menor primeiro)
+    return teamPicks.sort((a, b) => {
+      // Primeiro ordenar por temporada (mais recente primeiro)
+      const seasonDiff = parseInt(b.season_year) - parseInt(a.season_year);
+      if (seasonDiff !== 0) return seasonDiff;
+      
+      // Se a temporada for igual, ordenar por rodada (menor primeiro)
+      return a.round - b.round;
+    });
   };
 
   return (
@@ -343,21 +384,32 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Select
-                            value={asset.pick_id?.toString() || ''}
-                            onValueChange={(value) => handleAssetChange(participantIndex, assetIndex, 'pick_id', Number(value))}
-                          >
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Selecionar pick" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getTeamPicks(participant.team_id).map((pick) => (
-                                <SelectItem key={pick.id} value={pick.id.toString()}>
-                                  {pick.season_year} - {pick.original_team_name} ({pick.round}ª rodada)
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Select
+                              value={asset.pick_id?.toString() || ''}
+                              onValueChange={(value) => handleAssetChange(participantIndex, assetIndex, 'pick_id', Number(value))}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Selecionar pick" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {getTeamPicks(participant.team_id).length === 0 ? (
+                                  <div className="px-2 py-1 text-sm text-gray-500">
+                                    Nenhuma pick disponível para trade
+                                  </div>
+                                ) : (
+                                  getTeamPicks(participant.team_id).map((pick) => (
+                                    <SelectItem key={pick.id} value={pick.id.toString()}>
+                                      {pick.season_year} - {pick.original_team_name} ({pick.round}ª rodada)
+                                    </SelectItem>
+                                  ))
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500">
+                              Apenas picks da temporada ativa ou futuras podem ser negociadas
+                            </p>
+                          </div>
                         )}
 
                         {participants.length > 2 && (

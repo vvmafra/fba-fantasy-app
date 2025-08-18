@@ -2,6 +2,15 @@ import pool from '../utils/postgresClient.js';
 
 export class PickService {
   static async getAllPicks() {
+    // Buscar a season ativa primeiro
+    const { rows: seasonRows } = await pool.query('SELECT id FROM seasons WHERE is_active = true LIMIT 1');
+    const activeSeason = seasonRows[0];
+    
+    if (!activeSeason) {
+      // Se não houver temporada ativa, retornar array vazio
+      return [];
+    }
+
     const { rows } = await pool.query(`
       SELECT picks.*, 
              CAST(SPLIT_PART(s.year, '/', 1) AS INTEGER) as season_year, 
@@ -11,8 +20,9 @@ export class PickService {
       JOIN seasons s ON picks.season_id = s.id
       JOIN teams t1 ON picks.original_team_id = t1.id
       JOIN teams t2 ON picks.current_team_id = t2.id
-      ORDER BY season_year DESC, picks.round DESC
-    `);
+      WHERE picks.season_id >= $1
+      ORDER BY season_year DESC, picks.round ASC
+    `, [activeSeason.id]);
     return rows;
   }
 
@@ -60,6 +70,7 @@ export class PickService {
       JOIN teams t1 ON picks.original_team_id = t1.id
       JOIN teams t2 ON picks.current_team_id = t2.id
       WHERE picks.season_id > $1
+      ORDER BY season_year DESC, picks.round ASC
     `;
 
     // My own picks

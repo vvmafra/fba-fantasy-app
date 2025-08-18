@@ -6,7 +6,7 @@ export class WaiverService {
   async addReleasedPlayer(playerId: number, teamId: number, seasonId: number): Promise<Waiver> {
     const query = `
       INSERT INTO waivers (team_id, player_id, season_id, created_at)
-      VALUES ($1, $2, $3, NOW())
+              VALUES ($1, $2, $3, (NOW() AT TIME ZONE 'America/Sao_Paulo'))
       RETURNING *
     `;
     

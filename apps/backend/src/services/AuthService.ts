@@ -162,7 +162,7 @@ export class AuthService {
       
       await pool.query(
         `UPDATE users 
-         SET refresh_token = $1, token_updated_at = NOW()
+         SET refresh_token = $1, token_updated_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
          WHERE id = $2`,
         [refreshToken, userId]
       );

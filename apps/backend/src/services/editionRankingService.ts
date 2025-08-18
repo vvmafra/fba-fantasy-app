@@ -19,13 +19,9 @@ export class EditionRankingService {
   // Calcular ranking de edição para todos os times
   static async getEditionRanking(): Promise<EditionRankingTeam[]> {
     const { rows } = await pool.query(`
-      WITH team_points AS (
+      WITH standings AS (
         SELECT 
-          t.id as team_id,
-          t.name as team_name,
-          t.abbreviation as team_abbreviation,
-          u.name as owner_name,
-          -- Pontos dos standings
+          ts.team_id,
           COALESCE(SUM(
             CASE 
               WHEN ts.seed = 1 THEN 4
@@ -42,48 +38,45 @@ export class EditionRankingService {
               ELSE 0
             END
           ), 0) as standings_points,
-          -- Pontos dos awards
-          COALESCE(SUM(
-            CASE WHEN sa.mvp_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.roy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.smoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.dpoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.mip_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.coy_team_id = t.id THEN 1 ELSE 0 END
-          ), 0) as awards_points,
-          -- Estatísticas
           COUNT(DISTINCT ts.season_id) as seasons_count,
           COUNT(CASE WHEN ts.elimination_round = 5 THEN 1 END) as championships,
           COUNT(CASE WHEN ts.elimination_round >= 4 THEN 1 END) as finals_appearances,
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
-        FROM teams t
-        LEFT JOIN users u ON t.owner_id = u.id
-        LEFT JOIN team_standings ts ON t.id = ts.team_id
-        LEFT JOIN season_awards sa ON t.id IN (
-          sa.mvp_team_id, 
-          sa.roy_team_id, 
-          sa.smoy_team_id, 
-          sa.dpoy_team_id, 
-          sa.mip_team_id, 
-          sa.coy_team_id
-        )
-        GROUP BY t.id, t.name, t.abbreviation, u.name
+        FROM team_standings ts
+        GROUP BY ts.team_id
+      ),
+      awards AS (
+        SELECT 
+          team_id,
+          COUNT(*) as awards_points
+        FROM (
+          SELECT sa.mvp_team_id as team_id FROM season_awards sa WHERE sa.mvp_team_id IS NOT NULL
+          UNION ALL SELECT sa.roy_team_id FROM season_awards sa WHERE sa.roy_team_id IS NOT NULL
+          UNION ALL SELECT sa.smoy_team_id FROM season_awards sa WHERE sa.smoy_team_id IS NOT NULL
+          UNION ALL SELECT sa.dpoy_team_id FROM season_awards sa WHERE sa.dpoy_team_id IS NOT NULL
+          UNION ALL SELECT sa.mip_team_id FROM season_awards sa WHERE sa.mip_team_id IS NOT NULL
+          UNION ALL SELECT sa.coy_team_id FROM season_awards sa WHERE sa.coy_team_id IS NOT NULL
+        ) x
+        GROUP BY team_id
       )
       SELECT 
-        team_id,
-        team_name,
-        team_abbreviation,
-        owner_name,
-        standings_points + awards_points as total_points,
-        standings_points,
-        awards_points,
-        seasons_count,
-        championships,
-        finals_appearances,
-        conference_finals,
-        playoff_appearances
-      FROM team_points
+        t.id as team_id,
+        t.name as team_name,
+        t.abbreviation as team_abbreviation,
+        u.name as owner_name,
+        COALESCE(s.standings_points, 0) + COALESCE(a.awards_points, 0) as total_points,
+        COALESCE(s.standings_points, 0) as standings_points,
+        COALESCE(a.awards_points, 0) as awards_points,
+        COALESCE(s.seasons_count, 0) as seasons_count,
+        COALESCE(s.championships, 0) as championships,
+        COALESCE(s.finals_appearances, 0) as finals_appearances,
+        COALESCE(s.conference_finals, 0) as conference_finals,
+        COALESCE(s.playoff_appearances, 0) as playoff_appearances
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      LEFT JOIN standings s ON s.team_id = t.id
+      LEFT JOIN awards a ON a.team_id = t.id
       ORDER BY total_points DESC, championships DESC, finals_appearances DESC, conference_finals DESC
     `);
 
@@ -106,13 +99,9 @@ export class EditionRankingService {
   // Calcular ranking de edição por temporada específica
   static async getEditionRankingBySeason(seasonId: number): Promise<EditionRankingTeam[]> {
     const { rows } = await pool.query(`
-      WITH team_points AS (
+      WITH standings AS (
         SELECT 
-          t.id as team_id,
-          t.name as team_name,
-          t.abbreviation as team_abbreviation,
-          u.name as owner_name,
-          -- Pontos dos standings para a temporada específica
+          ts.team_id,
           COALESCE(SUM(
             CASE 
               WHEN ts.seed = 1 THEN 4
@@ -129,49 +118,47 @@ export class EditionRankingService {
               ELSE 0
             END
           ), 0) as standings_points,
-          -- Pontos dos awards para a temporada específica
-          COALESCE(SUM(
-            CASE WHEN sa.mvp_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.roy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.smoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.dpoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.mip_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.coy_team_id = t.id THEN 1 ELSE 0 END
-          ), 0) as awards_points,
-          -- Estatísticas para a temporada específica
           1 as seasons_count,
           COUNT(CASE WHEN ts.elimination_round = 5 THEN 1 END) as championships,
           COUNT(CASE WHEN ts.elimination_round >= 4 THEN 1 END) as finals_appearances,
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
-        FROM teams t
-        LEFT JOIN users u ON t.owner_id = u.id
-        LEFT JOIN team_standings ts ON t.id = ts.team_id AND ts.season_id = $1
-        LEFT JOIN season_awards sa ON t.id IN (
-          sa.mvp_team_id, 
-          sa.roy_team_id, 
-          sa.smoy_team_id, 
-          sa.dpoy_team_id, 
-          sa.mip_team_id, 
-          sa.coy_team_id
-        ) AND sa.season_id = $1
-        GROUP BY t.id, t.name, t.abbreviation, u.name
+        FROM team_standings ts
+        WHERE ts.season_id = $1
+        GROUP BY ts.team_id
+      ),
+      awards AS (
+        SELECT 
+          team_id,
+          COUNT(*) as awards_points
+        FROM (
+          SELECT sa.mvp_team_id as team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.mvp_team_id IS NOT NULL
+          UNION ALL SELECT sa.roy_team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.roy_team_id IS NOT NULL
+          UNION ALL SELECT sa.smoy_team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.smoy_team_id IS NOT NULL
+          UNION ALL SELECT sa.dpoy_team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.dpoy_team_id IS NOT NULL
+          UNION ALL SELECT sa.mip_team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.mip_team_id IS NOT NULL
+          UNION ALL SELECT sa.coy_team_id FROM season_awards sa WHERE sa.season_id = $1 AND sa.coy_team_id IS NOT NULL
+        ) x
+        GROUP BY team_id
       )
       SELECT 
-        team_id,
-        team_name,
-        team_abbreviation,
-        owner_name,
-        standings_points + awards_points as total_points,
-        standings_points,
-        awards_points,
-        seasons_count,
-        championships,
-        finals_appearances,
-        conference_finals,
-        playoff_appearances
-      FROM team_points
-      WHERE standings_points > 0 OR awards_points > 0
+        t.id as team_id,
+        t.name as team_name,
+        t.abbreviation as team_abbreviation,
+        u.name as owner_name,
+        COALESCE(s.standings_points, 0) + COALESCE(a.awards_points, 0) as total_points,
+        COALESCE(s.standings_points, 0) as standings_points,
+        COALESCE(a.awards_points, 0) as awards_points,
+        COALESCE(s.seasons_count, 0) as seasons_count,
+        COALESCE(s.championships, 0) as championships,
+        COALESCE(s.finals_appearances, 0) as finals_appearances,
+        COALESCE(s.conference_finals, 0) as conference_finals,
+        COALESCE(s.playoff_appearances, 0) as playoff_appearances
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      LEFT JOIN standings s ON s.team_id = t.id
+      LEFT JOIN awards a ON a.team_id = t.id
+      WHERE COALESCE(s.standings_points, 0) > 0 OR COALESCE(a.awards_points, 0) > 0
       ORDER BY total_points DESC, championships DESC, finals_appearances DESC, conference_finals DESC
     `, [seasonId]);
 
@@ -194,13 +181,9 @@ export class EditionRankingService {
   // Buscar ranking de um time específico
   static async getTeamEditionRanking(teamId: number): Promise<EditionRankingTeam | null> {
     const { rows } = await pool.query(`
-      WITH team_points AS (
+      WITH standings AS (
         SELECT 
-          t.id as team_id,
-          t.name as team_name,
-          t.abbreviation as team_abbreviation,
-          u.name as owner_name,
-          -- Pontos dos standings
+          ts.team_id,
           COALESCE(SUM(
             CASE 
               WHEN ts.seed = 1 THEN 4
@@ -217,49 +200,47 @@ export class EditionRankingService {
               ELSE 0
             END
           ), 0) as standings_points,
-          -- Pontos dos awards
-          COALESCE(SUM(
-            CASE WHEN sa.mvp_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.roy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.smoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.dpoy_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.mip_team_id = t.id THEN 1 ELSE 0 END +
-            CASE WHEN sa.coy_team_id = t.id THEN 1 ELSE 0 END
-          ), 0) as awards_points,
-          -- Estatísticas
           COUNT(DISTINCT ts.season_id) as seasons_count,
           COUNT(CASE WHEN ts.elimination_round = 5 THEN 1 END) as championships,
           COUNT(CASE WHEN ts.elimination_round >= 4 THEN 1 END) as finals_appearances,
           COUNT(CASE WHEN ts.elimination_round >= 3 THEN 1 END) as conference_finals,
           COUNT(CASE WHEN ts.elimination_round > 0 THEN 1 END) as playoff_appearances
-        FROM teams t
-        LEFT JOIN users u ON t.owner_id = u.id
-        LEFT JOIN team_standings ts ON t.id = ts.team_id
-        LEFT JOIN season_awards sa ON t.id IN (
-          sa.mvp_team_id, 
-          sa.roy_team_id, 
-          sa.smoy_team_id, 
-          sa.dpoy_team_id, 
-          sa.mip_team_id, 
-          sa.coy_team_id
-        )
-        WHERE t.id = $1
-        GROUP BY t.id, t.name, t.abbreviation, u.name
+        FROM team_standings ts
+        WHERE ts.team_id = $1
+        GROUP BY ts.team_id
+      ),
+      awards AS (
+        SELECT 
+          team_id,
+          COUNT(*) as awards_points
+        FROM (
+          SELECT sa.mvp_team_id as team_id FROM season_awards sa WHERE sa.mvp_team_id = $1
+          UNION ALL SELECT sa.roy_team_id FROM season_awards sa WHERE sa.roy_team_id = $1
+          UNION ALL SELECT sa.smoy_team_id FROM season_awards sa WHERE sa.smoy_team_id = $1
+          UNION ALL SELECT sa.dpoy_team_id FROM season_awards sa WHERE sa.dpoy_team_id = $1
+          UNION ALL SELECT sa.mip_team_id FROM season_awards sa WHERE sa.mip_team_id = $1
+          UNION ALL SELECT sa.coy_team_id FROM season_awards sa WHERE sa.coy_team_id = $1
+        ) x
+        GROUP BY team_id
       )
       SELECT 
-        team_id,
-        team_name,
-        team_abbreviation,
-        owner_name,
-        standings_points + awards_points as total_points,
-        standings_points,
-        awards_points,
-        seasons_count,
-        championships,
-        finals_appearances,
-        conference_finals,
-        playoff_appearances
-      FROM team_points
+        t.id as team_id,
+        t.name as team_name,
+        t.abbreviation as team_abbreviation,
+        u.name as owner_name,
+        COALESCE(s.standings_points, 0) + COALESCE(a.awards_points, 0) as total_points,
+        COALESCE(s.standings_points, 0) as standings_points,
+        COALESCE(a.awards_points, 0) as awards_points,
+        COALESCE(s.seasons_count, 0) as seasons_count,
+        COALESCE(s.championships, 0) as championships,
+        COALESCE(s.finals_appearances, 0) as finals_appearances,
+        COALESCE(s.conference_finals, 0) as conference_finals,
+        COALESCE(s.playoff_appearances, 0) as playoff_appearances
+      FROM teams t
+      LEFT JOIN users u ON t.owner_id = u.id
+      LEFT JOIN standings s ON s.team_id = t.id
+      LEFT JOIN awards a ON a.team_id = t.id
+      WHERE t.id = $1
     `, [teamId]);
 
     if (rows.length === 0) return null;

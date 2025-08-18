@@ -327,7 +327,62 @@ export class TradeService {
     try {
       await client.query('BEGIN');
       
-      // 1. Criar a trade
+      // 1. Validar que há pelo menos dois participantes
+      if (tradeData.participants.length < 2) {
+        throw new Error('Uma trade deve ter pelo menos dois participantes');
+      }
+      
+      // 2. Validar que as picks e jogadores pertencem aos times corretos
+      for (const participant of tradeData.participants) {
+        if (participant.assets.length === 0) {
+          throw new Error(`O time ${participant.team_id} deve ter pelo menos um asset para participar da trade`);
+        }
+        
+        for (const asset of participant.assets) {
+          if (asset.asset_type === 'pick' && asset.pick_id) {
+            // Verificar se a pick pertence ao time
+            const pickResult = await client.query(`
+              SELECT current_team_id, season_id FROM picks WHERE id = $1
+            `, [asset.pick_id]);
+            
+            if (pickResult.rows.length === 0) {
+              throw new Error(`Pick ${asset.pick_id} não encontrada`);
+            }
+            
+            const pick = pickResult.rows[0];
+            if (pick.current_team_id !== participant.team_id) {
+              throw new Error(`Pick ${asset.pick_id} não pertence ao time ${participant.team_id}`);
+            }
+            
+            // Verificar se a pick é da temporada ativa ou futura
+            const activeSeasonResult = await client.query('SELECT id FROM seasons WHERE is_active = true LIMIT 1');
+            if (activeSeasonResult.rows.length === 0) {
+              throw new Error('Não foi possível identificar a temporada ativa');
+            }
+            
+            const activeSeasonId = activeSeasonResult.rows[0].id;
+            if (pick.season_id < activeSeasonId) {
+              throw new Error(`Pick ${asset.pick_id} é de uma temporada passada e não pode ser negociada`);
+            }
+          } else if (asset.asset_type === 'player' && asset.player_id) {
+            // Verificar se o jogador pertence ao time
+            const playerResult = await client.query(`
+              SELECT team_id FROM players WHERE id = $1
+            `, [asset.player_id]);
+            
+            if (playerResult.rows.length === 0) {
+              throw new Error(`Jogador ${asset.player_id} não encontrado`);
+            }
+            
+            const player = playerResult.rows[0];
+            if (player.team_id !== participant.team_id) {
+              throw new Error(`Jogador ${asset.player_id} não pertence ao time ${participant.team_id}`);
+            }
+          }
+        }
+      }
+      
+      // 3. Criar a trade
       const tradeResult = await client.query(`
         INSERT INTO trades (season_id, created_by_team, status)
         VALUES ($1, $2, 'proposed')
@@ -336,7 +391,7 @@ export class TradeService {
       
       const trade = tradeResult.rows[0];
       
-      // 2. Criar participantes e mapear índices para IDs
+      // 4. Criar participantes e mapear índices para IDs
       const participantIdMap = new Map<number, number>(); // índice -> ID real
       const participantRecords: any[] = [];
       for (let i = 0; i < tradeData.participants.length; i++) {
@@ -352,7 +407,7 @@ export class TradeService {
         participantIdMap.set(i, participantRecord.id);
         participantRecords.push({ ...participant, db_id: participantRecord.id });
       }
-      // 3. Inserir todos os assets agora que todos os participantes existem
+      // 5. Inserir todos os assets agora que todos os participantes existem
       for (let i = 0; i < tradeData.participants.length; i++) {
         const participant = tradeData.participants[i];
         const participantDbId = participantIdMap.get(i);
@@ -480,7 +535,7 @@ export class TradeService {
       // 3. Atualizar participante
       const updateResult = await client.query(`
         UPDATE trade_participants 
-        SET response_status = $1, responded_at = NOW()
+        SET response_status = $1, responded_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
         WHERE id = $2
         RETURNING *
       `, [responseData.response_status, participantId]);
@@ -651,7 +706,7 @@ export class TradeService {
     // 6. Atualizar status da trade
     await client.query(`
       UPDATE trades 
-      SET status = 'executed', executed_at = NOW()
+              SET status = 'executed', executed_at = (NOW() AT TIME ZONE 'America/Sao_Paulo')
       WHERE id = $1
     `, [tradeId]);
   }
@@ -705,7 +760,7 @@ export class TradeService {
       // 4. Atualizar status da trade
       const updatedTradeResult = await client.query(`
         UPDATE trades 
-        SET status = 'reverted', reverted_at = NOW(), reverted_by_user = $1
+        SET status = 'reverted', reverted_at = (NOW() AT TIME ZONE 'America/Sao_Paulo'), reverted_by_user = $1
         WHERE id = $2
         RETURNING *
       `, [revertedByUser, tradeId]);
@@ -934,7 +989,7 @@ export class TradeService {
       await client.query(`
         UPDATE trade_participants 
         SET response_status = 'rejected', 
-            responded_at = NOW() 
+            responded_at = (NOW() AT TIME ZONE 'America/Sao_Paulo') 
         WHERE trade_id = ANY($1)
       `, [tradeIds]);
       
