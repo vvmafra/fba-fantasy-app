@@ -444,7 +444,7 @@ export class TradeService {
     const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
     
     return {
-      canTrade: tradesUsed < tradesLimit,
+      canTrade: tradesUsed <= tradesLimit, // Permitir até atingir exatamente o limite
       tradesUsed,
       tradesLimit
     };
