@@ -67,33 +67,56 @@ export const deadlineService = {
       // SEMPRE combinar a data com o horário correto
       // Extrair apenas a data (YYYY-MM-DD) do deadline_date
       const dateOnly = deadline.deadline_date.split('T')[0];
-      const combinedDateTime = `${dateOnly}T${deadline.deadline_time}`;
-      return new Date(combinedDateTime);
+      
+      // Criar data no fuso horário local (sem conversão UTC)
+      const [year, month, day] = dateOnly.split('-').map(Number);
+      const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+      
+      // Criar data no fuso horário local (sem conversão UTC)
+      const result = new Date(year, month - 1, day, hours, minutes, seconds || 0);
+      
+      return result;
     },
 
     // Formatar data completa do deadline (ex: "22/01 (segunda-feira) 14h00")
     formatDeadlineDate: (deadline: Deadline): string => {
-      // Normalizar a data primeiro
+      // Normalizar a data primeiro - usar a mesma abordagem da calculateDeadlineDateTime
       let date: Date;
       if (deadline.deadline_date.includes('T')) {
-        date = new Date(deadline.deadline_date);
+        // Se já tem T, extrair apenas a parte da data
+        const dateOnly = deadline.deadline_date.split('T')[0];
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+        date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       } else {
-        date = new Date(`${deadline.deadline_date}T${deadline.deadline_time}`);
+        // Criar data no fuso horário local (sem conversão UTC)
+        const [year, month, day] = deadline.deadline_date.split('-').map(Number);
+        const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+        date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       }
+      
       const time = deadline.deadline_time.substring(0, 5); // Remove segundos
       const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long' });
       const dayMonth = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      
       return `${dayMonth} (${dayName}) ${time.replace(':', 'h')}`;
     },
 
     // Formatar data e hora separadamente
     formatDate: (deadline: Deadline): string => {
-      // Normalizar a data primeiro
+      // Normalizar a data primeiro - usar a mesma abordagem da calculateDeadlineDateTime
       let date: Date;
       if (deadline.deadline_date.includes('T')) {
-        date = new Date(deadline.deadline_date);
+        // Se já tem T, extrair apenas a parte da data
+        const dateOnly = deadline.deadline_date.split('T')[0];
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+        date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       } else {
-        date = new Date(`${deadline.deadline_date}T${deadline.deadline_time}`);
+        // Criar data no fuso horário local (sem conversão UTC)
+        const [year, month, day] = deadline.deadline_date.split('-').map(Number);
+        const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+        date = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       }
       return date.toLocaleDateString('pt-BR');
     },
@@ -133,8 +156,11 @@ export const deadlineService = {
       // SEMPRE combinar a data com o horário correto
       // Extrair apenas a data (YYYY-MM-DD) do deadline_date
       const dateOnly = deadline.deadline_date.split('T')[0];
-      const combinedDateTime = `${dateOnly}T${deadline.deadline_time}`;
-      const baseDate = new Date(combinedDateTime);
+      
+      // Criar data no fuso horário local (sem conversão UTC)
+      const [year, month, day] = dateOnly.split('-').map(Number);
+      const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+      const baseDate = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       
       const now = new Date();
       if (baseDate <= now) {
@@ -158,8 +184,11 @@ export const deadlineService = {
       // SEMPRE combinar a data com o horário correto
       // Extrair apenas a data (YYYY-MM-DD) do deadline_date
       const dateOnly = deadline.deadline_date.split('T')[0];
-      const combinedDateTime = `${dateOnly}T${deadline.deadline_time}`;
-      baseDate = new Date(combinedDateTime);
+      
+      // Criar data no fuso horário local (sem conversão UTC)
+      const [year, month, day] = dateOnly.split('-').map(Number);
+      const [hours, minutes, seconds] = deadline.deadline_time.split(':').map(Number);
+      baseDate = new Date(year, month - 1, day, hours, minutes, seconds || 0);
       
       const now = new Date();
       

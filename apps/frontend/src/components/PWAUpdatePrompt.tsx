@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/components/ui/use-toast';
 
 // Declaração de tipo para navigator.standalone (iOS)
 declare global {
@@ -56,7 +57,12 @@ const PWAUpdatePrompt = () => {
       }, 1000);
 
     } catch (error) {
-      console.error('Erro ao atualizar PWA:', error);
+      // Erro ao atualizar PWA
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o aplicativo.",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }

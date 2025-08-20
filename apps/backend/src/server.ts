@@ -85,7 +85,7 @@ app.use(errorHandler);
 // Função para inicializar o servidor
 const startServer = async () => {
   try {
-    // Verificar conexão com PostgreSQL
+    // Testar conexão com PostgreSQL
     const isConnected = await checkPostgresConnection();
     if (!isConnected) {
       console.error('❌ Erro na conexão com PostgreSQL');
@@ -93,11 +93,16 @@ const startServer = async () => {
     }
     console.log('✅ Conexão com PostgreSQL estabelecida');
 
-    // Iniciar servidor
-    app.listen(PORT, () => {
+    // Inicializar servidor após conexão bem-sucedida
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`);
       console.log(`📡 API disponível em http://localhost:${PORT}${API_PREFIX}`);
       console.log(`🏥 Health check em http://localhost:${PORT}${API_PREFIX}/health`);
+    });
+
+    server.on('error', (error) => {
+      console.error('❌ Erro ao iniciar servidor:', error);
+      process.exit(1);
     });
   } catch (error) {
     console.error('❌ Erro ao iniciar servidor:', error);

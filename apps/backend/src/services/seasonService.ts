@@ -352,16 +352,16 @@ export class SeasonService {
       // Cada time terá original_team_id e current_team_id iguais inicialmente
       
       const { rowCount } = await client.query(`
-        INSERT INTO picks (season_id, original_team_id, current_team_id, round)
-        SELECT 
-          $1::integer as season_id,
+                 INSERT INTO picks (season_id, original_team_id, current_team_id, round)
+          SELECT 
+            $1::integer as season_id,
           CAST(t.id AS integer) as original_team_id,
           CAST(t.id AS integer) as current_team_id,
           1 as round
         FROM teams t
         UNION ALL
         SELECT 
-          $1::integer as season_id,
+                      $1::integer as season_id,
           CAST(t.id AS integer) as original_team_id,
           CAST(t.id AS integer) as current_team_id,
           2 as round

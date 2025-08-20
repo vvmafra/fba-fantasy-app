@@ -210,7 +210,7 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">
-              Picks Trocadas
+              Picks Trocadas ({picksTrocadas.length} total)
             </h2>
             <button type="button" onClick={() => setShowTradedPicks(v => !v)} className="ml-2">
               {showTradedPicks ? <ChevronUp size={20} /> : <ChevronDown size={20} />}

@@ -11,6 +11,8 @@ import { useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import TeamPicks from './TeamPicks';
 import { useTeamFuturePicks } from '@/hooks/usePicks';
+import { useExecutedTradesCount } from '@/hooks/useTrades';
+import { useActiveSeason } from '@/hooks/useSeasons';
 
 // Suprimir warnings específicos do react-beautiful-dnd
 const originalError = console.error;
@@ -50,8 +52,21 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
   const { data: team, isLoading: teamLoading, error: teamError } = useTeam(numericTeamId);
   const { data: activeLeagueCapResponse, isLoading: leagueCapLoading } = useActiveLeagueCap();
   const { data: futurePicksData } = useTeamFuturePicks(numericTeamId);
+  const { data: activeSeasonData } = useActiveSeason();
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
   const { toast } = useToast();
+
+  // Calcular período atual para limite de trades (a cada 2 temporadas)
+  const currentSeason = activeSeasonData?.data?.season_number || 1;
+  const seasonStart = Math.floor((currentSeason - 1) / 2) * 2 + 1;
+  const seasonEnd = seasonStart + 1;
+  
+  // Hook para contar trades executadas no período atual
+  const { data: tradeLimitData } = useExecutedTradesCount(
+    numericTeamId, 
+    seasonStart, 
+    seasonEnd
+  );
 
   // Extrair dados da resposta da API
   const teamPlayers: Player[] = teamPlayersResponse?.data || [];
@@ -635,9 +650,11 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
               </div>
 
               <div>
-                <p className="text-2xl font-bold">-</p>
+                <p className="text-2xl font-bold">{tradeLimitData?.data?.trades_used || 0}/10</p>
                 <p className="text-sm opacity-80">Trades</p>
-                <span className="text-xs text-gray-500 font-medium block mt-1">Modo visualização</span>
+                <span className="text-xs text-gray-500 font-medium block mt-1">
+                  {tradeLimitData?.data?.trades_used || 0} usadas no período atual
+                </span>
               </div>
 
               <div>
@@ -769,19 +786,6 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
         )} */}
         {/* Componente de Picks */}
         <TeamPicks teamId={numericTeamId} />
-        {isAdmin && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-blue-600 hover:text-blue-700 mt-4"
-            onClick={handleCopyPicks}
-            disabled={!futurePicksData || 
-              (!futurePicksData.my_own_picks?.length && !futurePicksData.received_picks?.length)}
-          >
-            <Copy size={16} />
-            Copiar Picks
-          </Button>
-        )}
       </div>
     </div>
   );

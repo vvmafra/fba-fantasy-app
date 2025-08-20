@@ -8,13 +8,12 @@ export function useTeamFuturePicks(teamId?: number) {
     queryFn: async () => {
       if (!teamId) return null;
       try {
-        console.log('Buscando picks futuras para time:', teamId);
         const response = await getTeamFuturePicks(teamId);
-        console.log('Resposta da API:', response);
         return response.data;
       } catch (error) {
-        console.error('Erro ao buscar picks futuras:', error);
+        // Erro ao buscar picks futuras
         throw error;
+      } finally {
       }
     },
     enabled: !!teamId,

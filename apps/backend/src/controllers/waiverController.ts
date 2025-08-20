@@ -26,7 +26,6 @@ export class WaiverController {
         message: 'Jogador adicionado aos waivers com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao adicionar jogador aos waivers:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao adicionar jogador aos waivers' 
       });
@@ -43,7 +42,6 @@ export class WaiverController {
         message: 'Waivers obtidos com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao obter waivers:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao obter waivers' 
       });
@@ -64,7 +62,6 @@ export class WaiverController {
         message: 'Waivers da temporada obtidos com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao obter waivers por temporada:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao obter waivers por temporada' 
       });
@@ -85,7 +82,6 @@ export class WaiverController {
         message: 'Waivers do time obtidos com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao obter waivers por time:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao obter waivers por time' 
       });
@@ -112,7 +108,6 @@ export class WaiverController {
         message: 'Waiver obtido com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao obter waiver:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao obter waiver' 
       });
@@ -138,7 +133,6 @@ export class WaiverController {
         message: 'Contagem de waivers obtida com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao contar waivers:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao contar waivers' 
       });
@@ -163,7 +157,6 @@ export class WaiverController {
         message: 'Waiver atualizado com sucesso'
       });
     } catch (error) {
-      console.error('Erro ao atualizar waiver:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao atualizar waiver' 
       });
@@ -189,7 +182,6 @@ export class WaiverController {
         message: 'Waiver deletado com sucesso' 
       });
     } catch (error) {
-      console.error('Erro ao deletar waiver:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao deletar waiver' 
       });

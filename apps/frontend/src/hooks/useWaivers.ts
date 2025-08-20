@@ -123,7 +123,7 @@ export const useWaivers = () => {
       const response = await waiverService.countWaiversByTeamAndSeason(teamId, seasonId);
       return response.data?.count || 0;
     } catch (err) {
-      console.error('Erro ao contar waivers:', err);
+      // Erro ao contar waivers
       return 0;
     }
   }, []);

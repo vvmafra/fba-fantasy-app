@@ -53,65 +53,69 @@ export class PickService {
     await pool.query('DELETE FROM picks WHERE id = $1', [id]);
   }
 
+  // Obter picks futuras de um time
   static async getTeamFuturePicks(teamId: number) {
     try {
-      // Buscar a season ativa
-      const { rows: seasonRows } = await pool.query('SELECT id FROM seasons WHERE is_active = true LIMIT 1');
-      const activeSeason = seasonRows[0];
+      // Buscar temporada ativa
+      const { rows: activeSeasonRows } = await pool.query(
+        'SELECT id, season_number FROM seasons WHERE is_active = true LIMIT 1'
+      );
       
-      if (!activeSeason) {
-        console.log('Nenhuma temporada ativa encontrada');
-        return { my_own_picks: [], received_picks: [], lost_picks: [] };
+      if (activeSeasonRows.length === 0) {
+        throw new Error('Nenhuma temporada ativa encontrada');
       }
-
-      console.log(`Buscando picks futuras para time ${teamId}, temporada ativa: ${activeSeason.id}`);
-
-      // Query base para picks futuras
-      const baseQuery = `
-        SELECT picks.*, 
-               CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) as season_year, 
-               t1.name as original_team_name, 
-               t2.name as current_team_name
-        FROM picks
-        JOIN seasons s ON picks.season_id = s.id
-        JOIN teams t1 ON picks.original_team_id = t1.id
-        JOIN teams t2 ON picks.current_team_id = t2.id
-        WHERE picks.season_id > $1
-      `;
-
-      // My own picks (picks originais do time que ainda estão com ele)
-      const { rows: myOwn } = await pool.query(
-        baseQuery + ' AND picks.current_team_id = $2 AND picks.original_team_id = $2 ORDER BY season_year DESC, picks.round ASC',
-        [activeSeason.id, teamId]
-      );
-
-      // Received picks (picks de outros times que foram adquiridas)
-      const { rows: received } = await pool.query(
-        baseQuery + ' AND picks.current_team_id = $2 AND picks.original_team_id <> $2 ORDER BY season_year DESC, picks.round ASC',
-        [activeSeason.id, teamId]
-      );
-
-      // Lost picks (picks originais do time que foram perdidas)
-      const { rows: lost } = await pool.query(
-        baseQuery + ' AND picks.original_team_id = $2 AND picks.current_team_id <> $2 ORDER BY season_year DESC, picks.round ASC',
-        [activeSeason.id, teamId]
-      );
-
-      const result = {
-        my_own_picks: myOwn || [],
-        received_picks: received || [],
-        lost_picks: lost || []
+      
+      const activeSeason = activeSeasonRows[0];
+      
+      // Buscar picks futuras do time - usando apenas colunas que existem
+      const { rows: picksRows } = await pool.query(`
+        SELECT 
+          p.id,
+          p.round,
+          CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) as season_year,
+          p.original_team_id,
+          p.current_team_id,
+          t.name as original_team_name,
+          t2.name as current_team_name
+        FROM picks p
+        JOIN seasons s ON p.season_id = s.id
+        LEFT JOIN teams t ON p.original_team_id = t.id
+        LEFT JOIN teams t2 ON p.current_team_id = t2.id
+        WHERE p.current_team_id = $1 
+          AND CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) > $2
+        ORDER BY season_year ASC, p.round ASC
+      `, [teamId, activeSeason.season_number]);
+      
+      // Buscar picks que o time perdeu em trades (estão com outros times mas eram originalmente dele)
+      const { rows: lostPicksRows } = await pool.query(`
+        SELECT 
+          p.id,
+          p.round,
+          CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) as season_year,
+          p.original_team_id,
+          p.current_team_id,
+          t.name as original_team_name,
+          t2.name as current_team_name
+        FROM picks p
+        JOIN seasons s ON p.season_id = s.id
+        LEFT JOIN teams t ON p.original_team_id = t.id
+        LEFT JOIN teams t2 ON p.current_team_id = t2.id
+        WHERE p.original_team_id = $1 
+          AND p.current_team_id != $1
+          AND CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) > $2
+        ORDER BY season_year ASC, p.round ASC
+      `, [teamId, activeSeason.season_number]);
+      
+      // Separar picks próprias e recebidas
+      const myOwnPicks = picksRows.filter(pick => pick.original_team_id === teamId);
+      const receivedPicks = picksRows.filter(pick => pick.original_team_id !== teamId);
+      
+      return {
+        my_own_picks: myOwnPicks,
+        received_picks: receivedPicks,
+        lost_picks: lostPicksRows
       };
-
-      console.log(`Resultado para time ${teamId}:`, {
-        my_own: result.my_own_picks.length,
-        received: result.received_picks.length,
-        lost: result.lost_picks.length
-      });
-
-      return result;
     } catch (error) {
-      console.error('Erro em getTeamFuturePicks:', error);
       throw error;
     }
   }

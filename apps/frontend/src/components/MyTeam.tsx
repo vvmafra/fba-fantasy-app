@@ -104,7 +104,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     if (numericTeamId && activeSeasonData?.data?.id) {
       countWaiversByTeamAndSeason(numericTeamId, activeSeasonData.data.id)
         .then(count => setWaiversUsed(count))
-        .catch(err => console.error('Erro ao carregar contagem de waivers:', err));
+        .catch(err => {
+          // Erro ao carregar contagem de waivers
+        });
     }
   }, [numericTeamId, activeSeasonData?.data?.id, countWaiversByTeamAndSeason]);
 
@@ -261,7 +263,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
         setWaiversUsed(prev => prev + 1);
       }
     } catch (error) {
-      console.error('Erro ao processar dispensa do jogador:', error);
+      // Erro ao processar dispensa do jogador
       toast({
         title: "Erro",
         description: "Erro ao adicionar jogador aos waivers. O jogador foi dispensado, mas não foi adicionado à lista de waivers.",

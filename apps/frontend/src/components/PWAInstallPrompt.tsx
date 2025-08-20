@@ -3,6 +3,7 @@ import { usePWA } from '../hooks/usePWA';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { X, Download, Bell } from 'lucide-react';
+import { toast } from './ui/use-toast';
 
 export const PWAInstallPrompt: React.FC = () => {
   const { canInstall, isInstalled, isOnline, installPWA, requestNotificationPermission } = usePWA();
@@ -22,7 +23,12 @@ export const PWAInstallPrompt: React.FC = () => {
         setShowPrompt(false);
       }
     } catch (error) {
-      console.error('Erro ao instalar:', error);
+      // Erro ao instalar
+      toast({
+        title: "Erro",
+        description: "Não foi possível instalar o aplicativo.",
+        variant: "destructive",
+      });
     } finally {
       setIsInstalling(false);
     }

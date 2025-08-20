@@ -72,46 +72,14 @@ export const validateSecurityConfig = () => {
 export const logSecurityEvent = (event: string, details: any) => {
   if (SECURITY_CONFIG.SECURITY_LOGS.ENABLED) {
     const timestamp = new Date().toISOString();
-    // console.log(`🔒 [SECURITY] ${timestamp} - ${event}:`, details);
+    // Log de segurança implementado aqui
   }
 };
 
 // Função para testar configurações de segurança
 export const testSecurityConfig = () => {
-  // console.log('🔒 Testando configurações de segurança...');
- 
-  // // Testar JWT
-  // console.log(`   JWT Secret configurado: ${SECURITY_CONFIG.JWT.SECRET !== 'fallback-secret-change-in-production'}`);
-  // console.log(`   JWT Access Token Expiry: ${SECURITY_CONFIG.JWT.ACCESS_TOKEN_EXPIRY}`);
-  // console.log(`   JWT Refresh Token Expiry: ${SECURITY_CONFIG.JWT.REFRESH_TOKEN_EXPIRY}`);
-  
-  // // Testar Rate Limiting
-  // console.log(`   Rate Limit Window: ${SECURITY_CONFIG.RATE_LIMIT.WINDOW_MS}ms`);
-  // console.log(`   Rate Limit Login: ${SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.LOGIN} requests`);
-  // console.log(`   Rate Limit Refresh: ${SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.REFRESH} requests`);
-  // console.log(`   Rate Limit General: ${SECURITY_CONFIG.RATE_LIMIT.MAX_REQUESTS.GENERAL} requests`);
-  
-  // // Testar CORS
-  // console.log(`   CORS Origin: ${SECURITY_CONFIG.CORS.ORIGIN}`);
-  // console.log(`   CORS Credentials: ${SECURITY_CONFIG.CORS.CREDENTIALS}`);
-  
-  // // Testar Headers
-  // console.log(`   Security Headers: ${Object.keys(SECURITY_CONFIG.HEADERS).length} headers configurados`);
-  
-  // // Testar Refresh Token
-  // console.log(`   Refresh Token Max Age: ${SECURITY_CONFIG.REFRESH_TOKEN.MAX_AGE_DAYS} days`);
-  // console.log(`   Refresh Token Rotation: ${SECURITY_CONFIG.REFRESH_TOKEN.ROTATION_ENABLED}`);
-  // console.log(`   Refresh Token Family Size: ${SECURITY_CONFIG.REFRESH_TOKEN.FAMILY_SIZE}`);
-  
-  // // Testar Logs
-  // console.log(`   Security Logs Enabled: ${SECURITY_CONFIG.SECURITY_LOGS.ENABLED}`);
-  // console.log(`   Log Failed Logins: ${SECURITY_CONFIG.SECURITY_LOGS.LOG_FAILED_LOGINS}`);
-  // console.log(`   Log Failed Refresh: ${SECURITY_CONFIG.SECURITY_LOGS.LOG_FAILED_REFRESH}`);
-  // console.log(`   Log Suspicious Activity: ${SECURITY_CONFIG.SECURITY_LOGS.LOG_SUSPICIOUS_ACTIVITY}`);
-  
   // Validar configurações
   const isValid = validateSecurityConfig();
-  // console.log(`   ✅ Configurações válidas: ${isValid}`);
   
   return isValid;
 };
