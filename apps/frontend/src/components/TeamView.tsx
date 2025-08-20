@@ -268,7 +268,7 @@ const ViewTeam = ({ isAdmin }: ViewTeamProps) => {
     }
     
     const capLine = `CAP: ${minCap} / *${currentCap}* / ${maxCap}`;
-    const tradesLine = `_Trades_: - / - (Modo visualização)`;
+    const tradesLine = `_Trades_: ${tradeLimitData?.data?.trades_used || 0} / ${tradeLimitData?.data?.trades_limit || 0}`;
     const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n${picksText}\n\n${capLine}\n${tradesLine}`;
     navigator.clipboard.writeText(text);
     toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
