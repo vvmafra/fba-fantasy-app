@@ -18,17 +18,19 @@ export const tradeKeys = {
   list: (filters: TradeQueryParams) => [...tradeKeys.lists(), filters] as const,
   details: () => [...tradeKeys.all, 'detail'] as const,
   detail: (id: number) => [...tradeKeys.details(), id] as const,
-  team: (teamId: number) => [...tradeKeys.all, 'team', teamId] as const,
-  counts: () => [...tradeKeys.all, 'counts'] as const,
+  team: (teamId: number, seasonId?: number) => [...tradeKeys.all, 'team', teamId, seasonId] as const,
+  counts: (seasonId?: number) => [...tradeKeys.all, 'counts', seasonId] as const,
   executedCount: (teamId: number, seasonStart: number, seasonEnd: number) => 
     [...tradeKeys.all, 'executed-count', teamId, seasonStart, seasonEnd] as const,
+  allBySeason: (seasonId?: number) => [...tradeKeys.all, 'season', seasonId] as const,
 };
 
 // Hook para buscar todas as trades
 export const useTrades = (params?: TradeQueryParams) => {
   return useQuery({
-    queryKey: tradeKeys.list(params || {}),
+    queryKey: [...tradeKeys.list(params || {}), params?.season_id],
     queryFn: () => tradeService.getAllTrades(params),
+    enabled: !params?.season_id || (!!params.season_id && params.season_id > 0),
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
 };
@@ -45,9 +47,9 @@ export const useTrade = (id: number) => {
 // Hook para buscar trades de um time
 export const useTradesByTeam = (teamId: number, seasonId?: number) => {
   return useQuery({
-    queryKey: tradeKeys.team(teamId),
+    queryKey: tradeKeys.team(teamId, seasonId),
     queryFn: () => tradeService.getTradesByTeam(teamId, seasonId),
-    enabled: !!teamId,
+    enabled: !!teamId && !!seasonId,
     staleTime: 2 * 60 * 1000, // 2 minutos
   });
 };
@@ -55,8 +57,9 @@ export const useTradesByTeam = (teamId: number, seasonId?: number) => {
 // Hook para buscar contadores de trades
 export const useTradeCounts = (seasonId?: number) => {
   return useQuery({
-    queryKey: tradeKeys.counts(),
+    queryKey: tradeKeys.counts(seasonId),
     queryFn: () => tradeService.getTradeCounts(seasonId),
+    enabled: !!seasonId,
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
 };

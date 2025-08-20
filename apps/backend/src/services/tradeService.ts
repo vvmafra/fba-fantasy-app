@@ -230,6 +230,7 @@ export class TradeService {
     `;
     
     values.push(limit, offset);
+    
     const { rows } = await pool.query(sql, values);
     
     // Para cada trade, buscar os participantes completos usando a função auxiliar
@@ -947,7 +948,8 @@ export class TradeService {
   static async updateTradeMade(tradeId: number, made: boolean): Promise<Trade> {
     const { rows } = await pool.query(`
       UPDATE trades 
-      SET made = $1      WHERE id = $2
+      SET made = $1
+      WHERE id = $2
       RETURNING *
     `, [made, tradeId]);
     
@@ -1002,4 +1004,4 @@ export class TradeService {
       client.release();
     }
   }
-} 
+}

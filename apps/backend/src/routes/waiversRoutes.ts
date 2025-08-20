@@ -23,6 +23,9 @@ router.get('/season/:seasonId', validateWithParams(waiverParamsSchema.pick({ sea
 // Obter waivers por time
 router.get('/team/:teamId', validateWithParams(waiverParamsSchema.pick({ teamId: true }), z.object({})), waiverController.getWaiversByTeam);
 
+// Contar waivers por time e temporada
+router.get('/count/:teamId/:seasonId', validateWithParams(waiverParamsSchema.pick({ teamId: true, seasonId: true }), z.object({})), waiverController.countWaiversByTeamAndSeason);
+
 // Obter waiver específico
 router.get('/:id', validateWithParams(waiverParamsSchema.pick({ id: true }), z.object({})), waiverController.getWaiverById);
 

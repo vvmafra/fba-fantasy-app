@@ -5,11 +5,21 @@ import { useActiveSeason } from './useSeasons';
 export function useTeamFuturePicks(teamId?: number) {
   return useQuery({
     queryKey: ['teamFuturePicks', teamId],
-    queryFn: () => {
-      if (!teamId) return Promise.resolve(null);
-      return getTeamFuturePicks(teamId).then(res => res.data);
+    queryFn: async () => {
+      if (!teamId) return null;
+      try {
+        console.log('Buscando picks futuras para time:', teamId);
+        const response = await getTeamFuturePicks(teamId);
+        console.log('Resposta da API:', response);
+        return response.data;
+      } catch (error) {
+        console.error('Erro ao buscar picks futuras:', error);
+        throw error;
+      }
     },
     enabled: !!teamId,
+    retry: 1,
+    retryDelay: 1000,
   });
 }
 

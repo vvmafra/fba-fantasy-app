@@ -42,6 +42,10 @@ export const waiverService = {
   getWaiversByTeam: (teamId: number) =>
     apiRequest.get<Waiver[]>(`/waivers/team/${teamId}`),
 
+  // Contar waivers por time e temporada
+  countWaiversByTeamAndSeason: (teamId: number, seasonId: number) =>
+    apiRequest.get<{ count: number }>(`/waivers/count/${teamId}/${seasonId}`),
+
   // Obter waiver específico
   getWaiverById: (id: number) =>
     apiRequest.get<Waiver>(`/waivers/${id}`),

@@ -31,15 +31,18 @@ const Trades = ({ isAdmin, teamId }: TradesProps) => {
   
 
   // Hooks
-  const { data: activeSeasonData } = useActiveSeason();
+  const { data: activeSeasonData, isLoading: activeSeasonLoading, error: activeSeasonError } = useActiveSeason();
+  
   const { data: tradesData } = useTrades({ 
     status: 'executed', 
     sortBy: 'executed_at', 
     sortOrder: 'desc',
     season_id: activeSeasonData?.data?.id 
   });
-  const { data: myTradesData, refetch: refetchMyTrades } = useTradesByTeam(teamId || 0, activeSeasonData?.data?.id || 1);
-  const { data: countsData } = useTradeCounts(activeSeasonData?.data?.id || 1);
+  
+  const { data: myTradesData, refetch: refetchMyTrades } = useTradesByTeam(teamId || 0, activeSeasonData?.data?.id);
+  
+  const { data: countsData } = useTradeCounts(activeSeasonData?.data?.id);
   const { data: teamsData } = useTeams();
   const { data: seasonsData } = useSeasonsFromActive();
   const { deadline: tradeDeadline, loading: deadlineLoading } = useTradeDeadline();

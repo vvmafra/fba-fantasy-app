@@ -301,7 +301,7 @@ const TradeProposal = ({ teamId, onTradeCreated, canProposeTrade = true, tradesR
     // Ordenar por temporada (mais recente primeiro) e depois por rodada (menor primeiro)
     return availablePicks.sort((a, b) => {
       // Primeiro ordenar por temporada (mais recente primeiro)
-      const seasonDiff = parseInt(b.season_year) - parseInt(a.season_year);
+      const seasonDiff = b.season_year - a.season_year;
       if (seasonDiff !== 0) return seasonDiff;
       
       // Se a temporada for igual, ordenar por rodada (menor primeiro)

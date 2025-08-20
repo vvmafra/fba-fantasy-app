@@ -99,7 +99,8 @@ export class WaiverController {
       if (!id) {
         return res.status(400).json({ error: 'id é obrigatório' });
       }
-      const waiver = await this.waiverService.getWaiverById(parseInt(id));
+      
+      const waiver = await this.waiverService.getWaiverById(parseInt(id, 10));
       
       if (!waiver) {
         return res.status(404).json({ error: 'Waiver não encontrado' });
@@ -114,6 +115,32 @@ export class WaiverController {
       console.error('Erro ao obter waiver:', error);
       return res.status(500).json({ 
         error: 'Erro interno do servidor ao obter waiver' 
+      });
+    }
+  };
+
+  // Contar waivers por time e temporada
+  countWaiversByTeamAndSeason = async (req: Request, res: Response) => {
+    try {
+      const { teamId, seasonId } = req.params;
+      if (!teamId || !seasonId) {
+        return res.status(400).json({ error: 'teamId e seasonId são obrigatórios' });
+      }
+      
+      const count = await this.waiverService.countWaiversByTeamAndSeason(
+        parseInt(teamId, 10), 
+        parseInt(seasonId, 10)
+      );
+
+      return res.json({
+        success: true,
+        data: { count },
+        message: 'Contagem de waivers obtida com sucesso'
+      });
+    } catch (error) {
+      console.error('Erro ao contar waivers:', error);
+      return res.status(500).json({ 
+        error: 'Erro interno do servidor ao contar waivers' 
       });
     }
   };

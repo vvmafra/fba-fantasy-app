@@ -138,4 +138,11 @@ export class WaiverService {
     const result = await postgresClient.query(query, [seasonId]);
     return result.rows;
   }
+
+  // Contar waivers por time e temporada
+  async countWaiversByTeamAndSeason(teamId: number, seasonId: number): Promise<number> {
+    const query = 'SELECT COUNT(*) FROM waivers WHERE team_id = $1 AND season_id = $2';
+    const result = await postgresClient.query(query, [teamId, seasonId]);
+    return parseInt(result.rows[0]?.count || '0');
+  }
 }

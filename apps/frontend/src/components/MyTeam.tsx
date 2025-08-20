@@ -25,6 +25,17 @@ interface MyTeamProps {
 // Posições dos titulares em ordem
 const STARTER_POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'];
 
+// Função para formatar nome do time com abreviação
+function formatTeamName(name: string) {
+  if (!name) return '';
+  const words = name.split(' ');
+  if (words.length === 1) return name;
+  
+  const firstWord = words[0];
+  const rest = words.slice(1).join(' ');
+  return `${firstWord[0]}. ${rest}`;
+}
+
 function formatPlayerName(name: string, maxLength = 12) {
   if (!name) return '';
   if (name.length <= maxLength) return name;
@@ -70,7 +81,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
   const releasePlayerMutation = useReleasePlayer(numericTeamId);
   const updatePlayerMutation = useUpdatePlayer(numericTeamId);
   const { toast } = useToast();
-  const { addReleasedPlayer } = useWaivers();
+  const { addReleasedPlayer, countWaiversByTeamAndSeason } = useWaivers();
 
   // Calcular período atual para limite de trades (a cada 2 temporadas)
   const currentSeason = activeSeasonData?.data?.season_number || 1;
@@ -83,6 +94,19 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     seasonStart, 
     seasonEnd
   );
+
+  // Estado para controlar o limite de waivers
+  const [waiversUsed, setWaiversUsed] = useState(0);
+  const [waiversLimit] = useState(3); // Limite de 3 waivers por temporada
+
+  // Carregar contagem de waivers usados
+  useEffect(() => {
+    if (numericTeamId && activeSeasonData?.data?.id) {
+      countWaiversByTeamAndSeason(numericTeamId, activeSeasonData.data.id)
+        .then(count => setWaiversUsed(count))
+        .catch(err => console.error('Erro ao carregar contagem de waivers:', err));
+    }
+  }, [numericTeamId, activeSeasonData?.data?.id, countWaiversByTeamAndSeason]);
 
   // Extrair dados da resposta da API
   const teamPlayers: Player[] = teamPlayersResponse?.data || [];
@@ -212,6 +236,16 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
 
   const handleReleasePlayer = async (playerId: number) => {
     try {
+      // Verificar se já atingiu o limite de waivers
+      if (waiversUsed >= waiversLimit) {
+        toast({
+          title: "Limite de waivers atingido",
+          description: `Você já dispensou ${waiversLimit} jogadores nesta temporada. Não é possível dispensar mais jogadores.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Primeiro, dispensar o jogador
       releasePlayerMutation.mutate(playerId);
       
@@ -222,6 +256,9 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
           numericTeamId, 
           activeSeasonData.data.id
         );
+        
+        // Atualizar contagem de waivers usados
+        setWaiversUsed(prev => prev + 1);
       }
     } catch (error) {
       console.error('Erro ao processar dispensa do jogador:', error);
@@ -412,7 +449,7 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
      
      const roundText = sortedYears.map(year => {
        const yearPicks = picksByYear[year];
-       const teamNames = yearPicks.map(pick => pick.original_team_name).join(', ');
+       const teamNames = yearPicks.map(pick => formatTeamName(pick.original_team_name)).join(', ');
        return `-${year} (${teamNames})`;
      }).join('\n');
      
@@ -423,14 +460,16 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     const text = `*${team.data.name}*\nDono: ${team.data.owner_name || 'Sem dono'}\n\n_Starters_\n${startersList}\n\n_Bench_\n${benchList || '-'}\n\n_Others_\n${othersList || '-'}\n\n_G-League_\n-\n${picksText}\n\n${capLine}\n${tradesLine}`;
     navigator.clipboard.writeText(text);
     toast({ title: 'Time copiado!', description: 'Informações do time copiadas para a área de transferência.' });
-    };
+  };
 
-    const capLine = `_CAP_: ${minCap} / *${currentCap}* / ${maxCap}`;
-    // Informações de trades
-    const tradesUsed = tradeLimitData?.data?.trades_used || 0;
-    const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
-    const tradesLine = `_Trades_: ${tradesUsed} / ${tradesLimit}`;
-    
+  const capLine = `_CAP_: ${minCap} / *${currentCap}* / ${maxCap}`;
+  // Informações de trades
+  const tradesUsed = tradeLimitData?.data?.trades_used || 0;
+  const tradesLimit = 10; // Limite fixo de 10 trades a cada 2 temporadas
+  const tradesLine = `_Trades_: ${tradesUsed} / ${tradesLimit}`;
+  
+  // Informações de waivers
+  const waiversLine = `_Waivers_: ${waiversUsed} / ${waiversLimit}`;
    
 
   // Componente PlayerCard simplificado
@@ -718,7 +757,8 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                     }}
                     onMouseDown={(e) => e.stopPropagation()}
                     onTouchStart={(e) => e.stopPropagation()}
-                    disabled={releasePlayerMutation.isPending}
+                    disabled={releasePlayerMutation.isPending || waiversUsed >= waiversLimit}
+                    title={waiversUsed >= waiversLimit ? `Limite de ${waiversLimit} waivers por temporada atingido` : 'Dispensar jogador'}
                   >
                     {releasePlayerMutation.isPending ? (
                       <Loader2 size={16} className="animate-spin" />
@@ -785,23 +825,29 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold">{avgOverall}</p>
-              <p className="text-sm opacity-80">OVR Médio</p>
-            </div>
-
-            <div>
-              <p className="text-2xl font-bold">{avgAge}</p>
-              <p className="text-sm opacity-80">Idade Média</p>
-            </div>
-
-            <div>
-              <p className={`text-2xl font-bold ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>{teamPlayers.length}</p>
-              <p className={`text-sm opacity-80 ${teamPlayers.length < 13 || teamPlayers.length > 15 ? 'text-red-600' : ''}`}>Jogadores</p>
+              <p className="text-2xl font-bold">{teamPlayers.length}</p>
+              <p className="text-sm opacity-80">Jogadores</p>
               {teamPlayers.length < 13 && (
                 <span className="text-xs text-red-600 font-medium block mt-1">Abaixo do mínimo</span>
               )}
               {teamPlayers.length > 15 && (
                 <span className="text-xs text-red-600 font-medium block mt-1">Acima do máximo</span>
+              )}
+            </div>
+
+            <div>
+              <p className="text-2xl font-bold">{tradesUsed}/{tradesLimit}</p>
+              <p className="text-sm opacity-80">Trades</p>
+              {tradesUsed >= tradesLimit && (
+                <span className="text-xs text-red-600 font-medium block mt-1">Limite atingido</span>
+              )}
+            </div>
+
+            <div>
+              <p className={`text-2xl font-bold ${waiversUsed >= waiversLimit ? 'text-red-600' : ''}`}>{waiversUsed}/{waiversLimit}</p>
+              <p className="text-sm opacity-80">Waivers</p>
+              {waiversUsed >= waiversLimit && (
+                <span className="text-xs text-red-600 font-medium block mt-1">Limite atingido</span>
               )}
             </div>
           </div>
@@ -966,17 +1012,43 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
       />
 
       {playerToRelease && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
-          <div className="bg-white rounded-lg p-6 shadow-lg max-w-sm w-full">
-            <h2 className="text-lg font-bold mb-2">Confirmar dispensa</h2>
-            <p className="mb-4">
-              Tem certeza que deseja dispensar <span className="font-semibold">{playerToRelease.name}</span>?<br />
-              Ele será adicionado à lista de waivers e ficará disponível para outros times.
-            </p>
-            <div className="flex justify-end gap-2">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <FileX className="w-6 h-6 text-red-600" />
+                </div>
+              </div>
+              <div className="ml-3">
+                <h2 className="text-lg font-semibold text-gray-900">Confirmar dispensa</h2>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <p className="text-sm text-gray-600 mb-3">
+                Tem certeza que deseja dispensar <span className="font-semibold text-gray-900">{playerToRelease.name}</span>?
+              </p>
+              <p className="text-sm text-gray-600 mb-3">
+                Ele será adicionado à lista de waivers e ficará disponível para outros times.
+              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Waivers usados:</strong> {waiversUsed + 1}/{waiversLimit} nesta temporada
+                </p>
+                {waiversUsed + 1 >= waiversLimit && (
+                  <p className="text-sm text-red-600 mt-1 font-medium">
+                    Este será seu último waiver da temporada!
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setPlayerToRelease(null)}
+                className="px-4 py-2"
               >
                 Cancelar
               </Button>
@@ -986,6 +1058,8 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
                   handleReleasePlayer(playerToRelease.id);
                   setPlayerToRelease(null);
                 }}
+                className="px-4 py-2"
+                disabled={waiversUsed >= waiversLimit}
               >
                 Dispensar
               </Button>

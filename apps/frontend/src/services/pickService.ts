@@ -6,7 +6,7 @@ export interface Pick {
   current_team_id: number;
   round: number;
   season_id: number;
-  season_year: string;
+  season_year: number;
   original_team_name: string;
   current_team_name: string;
 }

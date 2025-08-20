@@ -16,15 +16,19 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
   // Hook para buscar informações do time
   const { data: teamData, isLoading: isLoadingTeam } = useTeam(teamId);
 
-  // Agrupar picks em posse e trocadas, ordenadas por season_year e depois por round
+  // Agrupar picks em posse e trocadas, ordenadas por season_year (crescente) e depois por round
   const picksEmPosse = useMemo(() => {
-    if (!futurePicks) return [];
+    if (!futurePicks || !Array.isArray(futurePicks.my_own_picks) || !Array.isArray(futurePicks.received_picks)) {
+      return [];
+    }
+    
     const allPicks = [
-      ...(futurePicks.my_own_picks || []),
-      ...(futurePicks.received_picks || [])
+      ...futurePicks.my_own_picks,
+      ...futurePicks.received_picks
     ];
+    
     return allPicks.sort((a, b) => {
-      // Primeiro ordena por ano
+      // Primeiro ordena por ano (anos mais antigos primeiro - crescente)
       if (a.season_year !== b.season_year) {
         return a.season_year - b.season_year;
       }
@@ -34,9 +38,14 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
   }, [futurePicks]);
 
   const picksTrocadas = useMemo(() => {
-    if (!futurePicks) return [];
-    return (futurePicks.lost_picks || []).sort((a, b) => {
-      // Primeiro ordena por ano
+    if (!futurePicks || !Array.isArray(futurePicks.lost_picks)) {
+      return [];
+    }
+    
+    const lostPicks = futurePicks.lost_picks;
+    
+    return lostPicks.sort((a, b) => {
+      // Primeiro ordena por ano (anos mais antigos primeiro - crescente)
       if (a.season_year !== b.season_year) {
         return a.season_year - b.season_year;
       }
@@ -45,9 +54,21 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
     });
   }, [futurePicks]);
 
+  // Separar picks por round
+  const picks1Round = picksEmPosse.filter(pick => pick.round === 1);
+  const picks2Round = picksEmPosse.filter(pick => pick.round === 2);
+  
+  // Separar picks trocadas por round
+  const picksTrocadas1Round = picksTrocadas.filter(pick => pick.round === 1);
+  const picksTrocadas2Round = picksTrocadas.filter(pick => pick.round === 2);
+
   // Estados para minimizar/maximizar
   const [showOwnedPicks, setShowOwnedPicks] = useState(true);
   const [showTradedPicks, setShowTradedPicks] = useState(true);
+  const [show1Round, setShow1Round] = useState(true);
+  const [show2Round, setShow2Round] = useState(true);
+  const [showTraded1Round, setShowTraded1Round] = useState(true);
+  const [showTraded2Round, setShowTraded2Round] = useState(true);
 
   const PickCard = ({ pick, isOwned }: { pick: any; isOwned: boolean }) => {
     // Determinar o tipo da pick baseado na propriedade
@@ -72,7 +93,6 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
               
               <div className="space-y-1 text-sm text-gray-600">
                 <p>Time Original: <span className="font-medium">{pick.original_team_name}</span></p>
-                {/* <p>Atual Proprietário: <span className="font-medium">{pick.current_team_name}</span></p> */}
                 
                 {!isOwned && pick.original_team_id !== pick.current_team_id && (
                   <p className="flex items-center text-red-600">
@@ -119,7 +139,20 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
   if (errorPicks) {
     return (
       <div className="space-y-4">
-        <div className="text-center text-red-500">Erro ao carregar picks</div>
+        <div className="text-center text-red-500">
+          Erro ao carregar picks: {errorPicks?.message || 'Erro desconhecido'}
+        </div>
+        <div className="text-center text-sm text-gray-500">
+          Verifique o console para mais detalhes
+        </div>
+      </div>
+    );
+  }
+
+  if (!futurePicks) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center text-gray-500">Nenhuma pick encontrada</div>
       </div>
     );
   }
@@ -140,17 +173,40 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
         </div>
         {showOwnedPicks && (
           picksEmPosse.length === 0 ? (
-            <div className="text-center text-gray-400">Nenhuma pick futura em posse.</div>
+            <div className="text-center text-gray-400">
+              Nenhuma pick futura em posse.
+              {futurePicks && (
+                <div className="text-xs text-gray-500 mt-1">
+                  Debug: my_own_picks: {futurePicks.my_own_picks?.length || 0}, 
+                  received_picks: {futurePicks.received_picks?.length || 0}
+                </div>
+              )}
+            </div>
           ) : (
-            picksEmPosse.map(pick => (
-              <PickCard key={pick.id} pick={pick} isOwned={true} />
-            ))
+            <>
+              {show1Round && picks1Round.length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold mb-2">1ª Rodada</h3>
+                  {picks1Round.map(pick => (
+                    <PickCard key={pick.id} pick={pick} isOwned={true} />
+                  ))}
+                </div>
+              )}
+              {show2Round && picks2Round.length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold mb-2">2ª Rodada</h3>
+                  {picks2Round.map(pick => (
+                    <PickCard key={pick.id} pick={pick} isOwned={true} />
+                  ))}
+                </div>
+              )}
+            </>
           )
         )}
       </div>
 
       {/* Picks Trocadas */}
-      {picksTrocadas.length > 0 && (
+      {(picksTrocadas1Round.length > 0 || picksTrocadas2Round.length > 0) && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">
@@ -161,9 +217,24 @@ const TeamPicks = ({ teamId }: TeamPicksProps) => {
             </button>
           </div>
           {showTradedPicks && (
-            picksTrocadas.map(pick => (
-              <PickCard key={pick.id} pick={pick} isOwned={false} />
-            ))
+            <>
+              {showTraded1Round && picksTrocadas1Round.length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold mb-2">1ª Rodada</h3>
+                  {picksTrocadas1Round.map(pick => (
+                    <PickCard key={pick.id} pick={pick} isOwned={false} />
+                  ))}
+                </div>
+              )}
+              {showTraded2Round && picksTrocadas2Round.length > 0 && (
+                <div>
+                  <h3 className="text-md font-semibold mb-2">2ª Rodada</h3>
+                  {picksTrocadas2Round.map(pick => (
+                    <PickCard key={pick.id} pick={pick} isOwned={false} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

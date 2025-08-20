@@ -117,6 +117,17 @@ export const useWaivers = () => {
     }
   }, [toast]);
 
+  // Contar waivers por time e temporada
+  const countWaiversByTeamAndSeason = useCallback(async (teamId: number, seasonId: number) => {
+    try {
+      const response = await waiverService.countWaiversByTeamAndSeason(teamId, seasonId);
+      return response.data?.count || 0;
+    } catch (err) {
+      console.error('Erro ao contar waivers:', err);
+      return 0;
+    }
+  }, []);
+
   // Atualizar waiver
   const updateWaiver = useCallback(async (id: number, updateData: Partial<Waiver>) => {
     try {
@@ -197,6 +208,7 @@ export const useWaivers = () => {
     fetchAllWaivers,
     fetchWaiversBySeason,
     fetchWaiversByTeam,
+    countWaiversByTeamAndSeason,
     updateWaiver,
     deleteWaiver,
     clearError,

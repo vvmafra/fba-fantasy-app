@@ -49,10 +49,15 @@ export class PickController {
   // GET /api/v1/picks/team/:teamId/future - Picks futuras agrupadas
   static getTeamFuturePicks = asyncHandler(async (req: Request, res: Response) => {
     const { teamId } = req.params;
+    console.log(`[DEBUG] Controller getTeamFuturePicks - teamId: ${teamId}`);
+    
     if (!teamId) {
       return res.status(400).json({ success: false, message: 'ID do time é obrigatório' });
     }
+    
     const result = await PickService.getTeamFuturePicks(Number(teamId));
+    console.log(`[DEBUG] Controller getTeamFuturePicks - resultado:`, result);
+    
     return res.status(200).json({ success: true, data: result });
   });
 }
