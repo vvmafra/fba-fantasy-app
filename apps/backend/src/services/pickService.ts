@@ -67,7 +67,7 @@ export class PickService {
       
       const activeSeason = activeSeasonRows[0];
       
-      // Buscar picks futuras do time - usando apenas colunas que existem
+      // Buscar picks futuras do time - picks da temporada atual E futuras (season_id >= activeSeason.id)
       const { rows: picksRows } = await pool.query(`
         SELECT 
           p.id,
@@ -82,9 +82,9 @@ export class PickService {
         LEFT JOIN teams t ON p.original_team_id = t.id
         LEFT JOIN teams t2 ON p.current_team_id = t2.id
         WHERE p.current_team_id = $1 
-          AND CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) > $2
-        ORDER BY season_year ASC, p.round ASC
-      `, [teamId, activeSeason.season_number]);
+          AND p.season_id >= $2
+        ORDER BY p.season_id ASC, p.round ASC
+      `, [teamId, activeSeason.id]);
       
       // Buscar picks que o time perdeu em trades (estão com outros times mas eram originalmente dele)
       const { rows: lostPicksRows } = await pool.query(`
@@ -102,9 +102,9 @@ export class PickService {
         LEFT JOIN teams t2 ON p.current_team_id = t2.id
         WHERE p.original_team_id = $1 
           AND p.current_team_id != $1
-          AND CAST(SUBSTRING(s.year, 1, 4) AS INTEGER) > $2
-        ORDER BY season_year ASC, p.round ASC
-      `, [teamId, activeSeason.season_number]);
+          AND p.season_id >= $2
+        ORDER BY p.season_id ASC, p.round ASC
+      `, [teamId, activeSeason.id]);
       
       // Separar picks próprias e recebidas
       const myOwnPicks = picksRows.filter(pick => pick.original_team_id === teamId);

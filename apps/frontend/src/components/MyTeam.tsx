@@ -417,45 +417,52 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     
- // Processar picks futuras
- let picksText = '';
- if (futurePicksData) {
-   const allPicks = [
-     ...(futurePicksData.my_own_picks || []),
-     ...(futurePicksData.received_picks || [])
-   ];
-   
-   // Agrupar picks por round
-   const picksByRound = allPicks.reduce((acc, pick) => {
-     const round = pick.round;
-     if (!acc[round]) acc[round] = [];
-     acc[round].push(pick);
-     return acc;
-   }, {} as Record<number, any[]>);
-   
-   // Ordenar rounds (1º antes do 2º)
-   const sortedRounds = Object.keys(picksByRound).sort((a, b) => parseInt(a) - parseInt(b));
-   
-   picksText = sortedRounds.map(round => {
-     const roundPicks = picksByRound[parseInt(round)];
-     // Agrupar picks por ano
-     const picksByYear = roundPicks.reduce((acc, pick) => {
-       const year = pick.season_year;
-       if (!acc[year]) acc[year] = [];
-       acc[year].push(pick);
-       return acc;
-     }, {} as Record<string, any[]>);
-     
-     // Ordenar anos
-     const sortedYears = Object.keys(picksByYear).sort((a, b) => parseInt(a) - parseInt(b));
-     
-     const roundText = sortedYears.map(year => {
-       const yearPicks = picksByYear[year];
-       const teamNames = yearPicks.map(pick => formatTeamName(pick.original_team_name)).join(', ');
-       return `-${year} (${teamNames})`;
-     }).join('\n');
-     
-     return `\n_Picks ${round}º round_:\n${roundText}`;
+    // Processar picks futuras (subsequentes à temporada ativa)
+    let picksText = '';
+    if (futurePicksData && activeSeasonData?.data?.id) {
+      const currentSeasonId = activeSeasonData.data.id;
+      
+      // Filtrar apenas picks futuras (season_id > currentSeasonId)
+      const allPicks = [
+        ...(futurePicksData.my_own_picks || []),
+        ...(futurePicksData.received_picks || [])
+      ].filter(pick => {
+        // Como o backend já filtra por season_id > activeSeason.id, 
+        // todas as picks retornadas são futuras
+        return true;
+      });
+      
+      // Agrupar picks por round
+      const picksByRound = allPicks.reduce((acc, pick) => {
+        const round = pick.round;
+        if (!acc[round]) acc[round] = [];
+        acc[round].push(pick);
+        return acc;
+      }, {} as Record<number, any[]>);
+      
+      // Ordenar rounds (1º antes do 2º)
+      const sortedRounds = Object.keys(picksByRound).sort((a, b) => parseInt(a) - parseInt(b));
+      
+      picksText = sortedRounds.map(round => {
+        const roundPicks = picksByRound[parseInt(round)];
+        // Agrupar picks por ano
+        const picksByYear = roundPicks.reduce((acc, pick) => {
+          const year = pick.season_year;
+          if (!acc[year]) acc[year] = [];
+          acc[year].push(pick);
+          return acc;
+        }, {} as Record<string, any[]>);
+        
+        // Ordenar anos
+        const sortedYears = Object.keys(picksByYear).sort((a, b) => parseInt(a) - parseInt(b));
+        
+        const roundText = sortedYears.map(year => {
+          const yearPicks = picksByYear[year];
+          const teamNames = yearPicks.map(pick => formatTeamName(pick.original_team_name)).join(', ');
+          return `-${year} (${teamNames})`;
+        }).join('\n');
+        
+        return `\n_Picks ${round}º round_:\n${roundText}`;
       }).join('\n');
     }
     
