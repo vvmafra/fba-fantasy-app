@@ -512,4 +512,64 @@ export class RosterPlayoffsService {
       throw error;
     }
   }
+
+  // Testar conexão com o banco
+  static async testConnection(): Promise<void> {
+    try {
+      this.checkPostgresClient();
+      
+      const { rows } = await pool.query('SELECT NOW() as current_time, version() as postgres_version');
+      console.log('✅ Conexão com banco de dados OK');
+      console.log('🕐 Hora atual do banco:', rows[0].current_time);
+      console.log('🐘 Versão do PostgreSQL:', rows[0].postgres_version);
+    } catch (error) {
+      console.error('💥 Erro na conexão com banco de dados:', error);
+    }
+  }
+
+  // Verificar estrutura da tabela
+  static async checkTableStructure(): Promise<void> {
+    try {
+      this.checkPostgresClient();
+      
+      // Primeiro verificar se a tabela existe
+      const tableExists = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'roster_playoffs'
+        );
+      `);
+      
+      if (!tableExists.rows[0].exists) {
+        console.error('❌ Tabela roster_playoffs não existe!');
+        return;
+      }
+      
+      console.log('✅ Tabela roster_playoffs existe');
+      
+      const { rows } = await pool.query(`
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns 
+        WHERE table_name = 'roster_playoffs' 
+        ORDER BY ordinal_position
+      `);
+      
+      console.log('📋 Estrutura da tabela roster_playoffs:');
+      rows.forEach(row => {
+        console.log(`  - ${row.column_name}: ${row.data_type} (nullable: ${row.is_nullable}, default: ${row.column_default})`);
+      });
+      
+      // Verificar se há colunas com valores padrão
+      const columnsWithDefaults = rows.filter(row => row.column_default);
+      if (columnsWithDefaults.length > 0) {
+        console.log('🔧 Colunas com valores padrão:');
+        columnsWithDefaults.forEach(row => {
+          console.log(`  - ${row.column_name}: ${row.column_default}`);
+        });
+      }
+    } catch (error) {
+      console.error('💥 Erro ao verificar estrutura da tabela:', error);
+    }
+  }
 }

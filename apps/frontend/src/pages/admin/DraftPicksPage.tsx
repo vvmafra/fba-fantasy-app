@@ -17,7 +17,7 @@ import { draftPickService } from '@/services/draftPickService';
 import { useToast } from '@/hooks/use-toast';
 import { useSeasons, useActiveSeason } from '@/hooks/useSeasons';
 import { useTeams } from '@/hooks/useTeams';
-import { CreateDraftPickData } from '@/services/draftPickService';
+import { CreateDraftPickData, DraftPick } from '@/services/draftPickService';
 import { Plus, Edit, Check, ChevronUp, ChevronDown } from 'lucide-react';
 import { useUpdatePlayer, useAllPlayers } from '@/hooks/usePlayers';
 import { usePlayers } from '@/hooks/usePlayers';
@@ -182,6 +182,59 @@ const DraftPicksPage = () => {
     });
   };
 
+  // Nova função para criar jogador e vincular ao draft pick
+  const handleCreatePlayerForDraftPick = () => {
+    if (!selectedPickForPlayer) {
+      toast({
+        title: 'Erro!',
+        description: 'Nenhum draft pick selecionado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Encontrar o draft pick selecionado para obter o team_id
+    const selectedPick = draftPicks.find(pick => pick.id === selectedPickForPlayer);
+    if (!selectedPick) {
+      toast({
+        title: 'Erro!',
+        description: 'Draft pick não encontrado.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Combinar posições primária e secundária
+    const position = newPlayerData.secondary_position && newPlayerData.secondary_position !== 'none'
+      ? `${newPlayerData.primary_position}/${newPlayerData.secondary_position}`
+      : newPlayerData.primary_position;
+
+    const playerData = {
+      name: newPlayerData.name,
+      position: position,
+      age: newPlayerData.age,
+      ovr: newPlayerData.ovr,
+      team_id: selectedPick.team_id, // Usar o team_id do draft pick selecionado
+    };
+
+    createPlayerAndLinkMutation.mutate({
+      id: selectedPickForPlayer,
+      data: playerData
+    }, {
+      onSuccess: () => {
+        setShowAddPlayerModal(false);
+        setSelectedPickForPlayer(null);
+        setNewPlayerData({
+          name: '',
+          primary_position: '',
+          secondary_position: 'none',
+          age: 18,
+          ovr: 70,
+        });
+      },
+    });
+  };
+
   const handleTransferPlayer = () => {
     if (!selectedPlayerForTransfer || transferToTeam === 0) return;
 
@@ -216,7 +269,7 @@ const DraftPicksPage = () => {
     return <Navigate to="/" replace />;
   }
 
-  const draftPicks = draftPicksResponse?.data || [];
+  const draftPicks: DraftPick[] = Array.isArray(draftPicksResponse?.data) ? draftPicksResponse.data : [];
   const seasons = seasonsResponse?.data || [];
   const teams = teamsResponse?.data?.sort((a, b) => a.name.localeCompare(b.name)) || [];
   const players = playersResponse?.data || [];
@@ -784,7 +837,7 @@ const DraftPicksPage = () => {
               Cancelar
             </Button>
             <Button 
-              onClick={handleCreatePlayer} 
+              onClick={handleCreatePlayerForDraftPick} 
               disabled={
                 createPlayerAndLinkMutation.isPending || 
                 !newPlayerData.name || 
