@@ -211,8 +211,8 @@ export class RosterPlayoffsService {
           season_id, team_id, rotation_style, minutes_starting, minutes_bench, 
           total_players_rotation, age_preference, game_style, franchise_player_id, 
           offense_style, defense_style, offensive_tempo, offensive_rebounding, 
-          defensive_aggression, defensive_rebounding, rotation_made, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, (NOW() AT TIME ZONE 'America/Sao_Paulo')) RETURNING *`,
+          defensive_aggression, defensive_rebounding, rotation_made
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
         values
       );
 
