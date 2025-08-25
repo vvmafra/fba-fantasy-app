@@ -12,6 +12,9 @@ import { SECURITY_CONFIG, validateSecurityConfig, logSecurityEvent, testSecurity
 // Carregar variáveis de ambiente
 dotenv.config();
 
+// Configurar timezone para UTC-3 (Brasil)
+process.env.TZ = 'America/Sao_Paulo';
+
 const app = express();
 const PORT = process.env['PORT'] || (process.env['NODE_ENV'] === 'production' ? 10000 : 3001);
 const API_PREFIX = process.env['API_PREFIX'] || '/api/v1';

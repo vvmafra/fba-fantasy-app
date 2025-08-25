@@ -17,6 +17,24 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000, // tempo limite para estabelecer conexão
 });
 
+// Configurar timezone para todas as conexões de forma mais robusta
+pool.on('connect', async (client) => {
+  try {
+    // Forçar timezone para America/Sao_Paulo
+    await client.query('SET timezone = \'America/Sao_Paulo\'');
+    
+    // Verificar se foi aplicado
+    const result = await client.query('SELECT current_setting(\'timezone\') as timezone');
+    console.log(`✅ Timezone configurado para: ${result.rows[0].timezone}`);
+    
+    // Configurar também o formato de data
+    await client.query('SET datestyle = \'ISO, DMY\'');
+    
+  } catch (error) {
+    console.error('❌ Erro ao configurar timezone:', error);
+  }
+});
+
 // Função para verificar conexão
 export const checkPostgresConnection = async () => {
   try {

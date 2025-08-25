@@ -204,8 +204,9 @@ export class RosterService {
           gleague1_player_id, gleague2_player_id, total_players_rotation, 
           age_preference, game_style, franchise_player_id, offense_style, defense_style,
           offensive_tempo, offensive_rebounding, defensive_aggression, defensive_rebounding,
-          rotation_made
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`,
+          rotation_made, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, 
+                 (NOW() AT TIME ZONE 'America/Sao_Paulo'), (NOW() AT TIME ZONE 'America/Sao_Paulo')) RETURNING *`,
         values
       );
 

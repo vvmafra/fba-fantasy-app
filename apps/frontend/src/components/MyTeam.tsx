@@ -417,20 +417,16 @@ const MyTeam = ({ isAdmin }: MyTeamProps) => {
     const benchList = bench.slice(0, 5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     const othersList = bench.slice(5).map(p => `${p.position}: ${p.name} - ${p.ovr} | ${p.age}y`).join('\n');
     
-    // Processar picks futuras (subsequentes à temporada ativa)
+    // Processar picks futuras (apenas das temporadas futuras, não da atual)
     let picksText = '';
     if (futurePicksData && activeSeasonData?.data?.id) {
       const currentSeasonId = activeSeasonData.data.id;
       
-      // Filtrar apenas picks futuras (season_id > currentSeasonId)
+      // O backend já filtra apenas picks futuras (season_id > activeSeason.id)
       const allPicks = [
         ...(futurePicksData.my_own_picks || []),
         ...(futurePicksData.received_picks || [])
-      ].filter(pick => {
-        // Como o backend já filtra por season_id > activeSeason.id, 
-        // todas as picks retornadas são futuras
-        return true;
-      });
+      ];
       
       // Agrupar picks por round
       const picksByRound = allPicks.reduce((acc, pick) => {

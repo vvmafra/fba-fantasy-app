@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { rosterPlayoffsService } from '@/services/rosterPlayoffsService';
 import { seasonService, Season } from '@/services/seasonService';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Users, Clock, Settings, Trophy } from 'lucide-react';
+import { FileText, Users, Clock, Settings, Trophy, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 interface RosterPlayoffsWithDetails {
   id: number;
@@ -29,6 +29,7 @@ interface RosterPlayoffsWithDetails {
   defensive_rebounding?: string;
   rotation_made?: boolean;
   created_at: string;
+  updated_at: string;
   starting_players: Array<{
     id: number;
     name: string;
@@ -53,7 +54,7 @@ export default function RostersPlayoffsPage() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'team_name' | 'updated_at'>('updated_at');
+  const [sortBy, setSortBy] = useState<'team_name' | 'created_at' | 'updated_at'>('updated_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [checkedRosters, setCheckedRosters] = useState<Set<number>>(new Set());
   const { toast } = useToast();
@@ -120,9 +121,104 @@ export default function RostersPlayoffsPage() {
     loadRosters();
   }, [selectedSeason, sortBy, sortOrder, toast]);
 
-  // Separar rosters por tipo
-  const automaticRosters = rosters.filter(r => r.rotation_style === 'automatic');
-  const manualRosters = rosters.filter(r => r.rotation_style === 'manual');
+  // Função para ordenar rosters
+  const sortRosters = (rosters: RosterPlayoffsWithDetails[], sortBy: string, sortOrder: 'asc' | 'desc') => {
+    return [...rosters].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortBy) {
+        case 'team_name':
+          aValue = a.team_name.toLowerCase();
+          bValue = b.team_name.toLowerCase();
+          break;
+        case 'team_abbreviation':
+          aValue = a.team_abbreviation.toLowerCase();
+          bValue = b.team_abbreviation.toLowerCase();
+          break;
+        case 'rotation_style':
+          aValue = a.rotation_style;
+          bValue = b.rotation_style;
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at);
+          bValue = new Date(b.created_at);
+          break;
+        case 'updated_at':
+          aValue = new Date(a.updated_at);
+          bValue = new Date(b.updated_at);
+          break;
+        case 'total_players_rotation':
+          aValue = a.total_players_rotation || 0;
+          bValue = b.total_players_rotation || 0;
+          break;
+        case 'age_preference':
+          aValue = a.age_preference || 0;
+          bValue = b.age_preference || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  // Função para alternar ordenação
+  const toggleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column as any);
+      setSortOrder('asc');
+    }
+  };
+
+  // Função para obter ícone de ordenação
+  const getSortIcon = (column: string) => {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-4 w-4" />;
+    }
+    return sortOrder === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+  };
+
+  // Função para deletar roster
+  const deleteRoster = async (rosterId: number) => {
+    if (!confirm('Tem certeza que deseja deletar este roster de playoffs? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      await rosterPlayoffsService.deleteRoster(rosterId);
+      
+      // Remover roster da lista
+      setRosters(prevRosters => prevRosters.filter(r => r.id !== rosterId));
+      
+      // Remover do checkedRosters se estiver lá
+      const newChecked = new Set(checkedRosters);
+      newChecked.delete(rosterId);
+      setCheckedRosters(newChecked);
+      
+      toast({
+        title: "Sucesso",
+        description: "Roster de playoffs deletado com sucesso",
+        variant: "default"
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Erro ao deletar roster de playoffs",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Separar rosters por tipo e ordenar
+  const sortedRosters = sortRosters(rosters, sortBy, sortOrder);
+  const automaticRosters = sortedRosters.filter(r => r.rotation_style === 'automatic');
+  const manualRosters = sortedRosters.filter(r => r.rotation_style === 'manual');
 
   // Função para formatar data
   const formatDate = (dateString: string) => {
@@ -314,13 +410,14 @@ export default function RostersPlayoffsPage() {
 
             <div>
               <label className="text-sm font-medium mb-2 block">Ordenar por</label>
-              <Select value={sortBy} onValueChange={(value: 'team_name' | 'created_at') => setSortBy(value)}>
+              <Select value={sortBy} onValueChange={(value: 'team_name' | 'created_at' | 'updated_at') => setSortBy(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="team_name">Nome do Time</SelectItem>
-                  <SelectItem value="updated_at">Data de Envio</SelectItem>
+                  <SelectItem value="created_at">Data de Criação</SelectItem>
+                  <SelectItem value="updated_at">Enviado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -400,12 +497,29 @@ export default function RostersPlayoffsPage() {
                         }}
                       />
                     </TableHead>
-                    <TableHead className="w-24">Time</TableHead>
+                    <TableHead 
+                      className="w-24 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('team_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Time
+                        {getSortIcon('team_name')}
+                      </div>
+                    </TableHead>
                     <TableHead className="min-w-[170px] md:min-w-[200px]">Titulares</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Reservas</TableHead>
                     <TableHead className="min-w-[100px] md:min-w-[150px]">Config</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[150px]">Estratégias</TableHead>
-                    <TableHead className="w-24">Enviado</TableHead>
+                    <TableHead 
+                      className="w-24 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('updated_at')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Enviado
+                        {getSortIcon('updated_at')}
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-16">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -466,6 +580,16 @@ export default function RostersPlayoffsPage() {
                         <div className="text-xs text-muted-foreground">
                           {formatDate(roster.updated_at)}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRoster(roster.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -535,12 +659,45 @@ export default function RostersPlayoffsPage() {
                         }}
                       />
                     </TableHead>
-                    <TableHead className="w-24">Time</TableHead>
-                    <TableHead className="min-w-[120px] md:min-w-[150px]">Rotação</TableHead>
-                    <TableHead className="w-20">Idade</TableHead>
+                    <TableHead 
+                      className="w-24 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('team_name')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Time
+                        {getSortIcon('team_name')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="min-w-[120px] md:min-w-[150px] cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('total_players_rotation')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Rotação
+                        {getSortIcon('total_players_rotation')}
+                      </div>
+                    </TableHead>
+                    <TableHead 
+                      className="w-20 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('age_preference')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Idade
+                        {getSortIcon('age_preference')}
+                      </div>
+                    </TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Config</TableHead>
                     <TableHead className="min-w-[150px] md:min-w-[200px]">Estratégias</TableHead>
-                    <TableHead className="w-24">Enviado</TableHead>
+                    <TableHead 
+                      className="w-24 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleSort('updated_at')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Enviado
+                        {getSortIcon('updated_at')}
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-16">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -594,8 +751,18 @@ export default function RostersPlayoffsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="text-xs text-muted-foreground">
-                          {formatDate(roster.created_at)}
+                          {formatDate(roster.updated_at)}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRoster(roster.id)}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
